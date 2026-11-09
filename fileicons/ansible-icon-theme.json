@@ -1,0 +1,25 @@
+{
+  "iconDefinitions": {
+    "_ansible_playbook": {
+      "iconPath": "./playbook.svg"
+    },
+    "_ansible_role": {
+      "iconPath": "./role.svg"
+    },
+    "_ansible_inventory": {
+      "iconPath": "./inventory.svg"
+    }
+  },
+  "fileExtensions": {
+    "yml": "_ansible_playbook",
+    "yaml": "_ansible_playbook"
+  },
+  "fileNames": {
+    "ansible.cfg": "_ansible_playbook",
+    "requirements.yml": "_ansible_role"
+  },
+  "folderNamesExpanded": {
+    "inventories": "_ansible_inventory",
+    "inventory": "_ansible_inventory"
+  }
+}

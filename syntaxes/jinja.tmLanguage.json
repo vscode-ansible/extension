@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Jinja (Ansible)",
+  "scopeName": "source.ansible.jinja",
+  "injectionSelector": "L:source.ansible, L:source.yaml",
+  "patterns": [
+    {
+      "include": "#jinja"
+    }
+  ],
+  "repository": {
+    "jinja": {
+      "patterns": [
+        {
+          "begin": "\\{\\{-?\\s*",
+          "end": "-?\\}\\}",
+          "name": "string.template.jinja",
+          "patterns": [
+            {
+              "match": "\\|\\s*(?:default|bool|int|float|string|list|dict|length|join|map|select|reject|lower|upper|replace|regex_replace)\\b",
+              "name": "support.function.filter.jinja"
+            },
+            {
+              "match": "\\b(?:hostvars|groups|inventory_hostname|ansible_facts|ansible_host|ansible_user|ansible_ssh_host|ansible_connection)\\b",
+              "name": "variable.language.ansible"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

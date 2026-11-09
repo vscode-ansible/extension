@@ -1,0 +1,245 @@
+import * as vscode from 'vscode';
+import { AnsibleCompletionProvider } from './completion/provider';
+import { scanDocument, SecretCodeActionProvider, SECRET_DIAGNOSTIC_SOURCE } from './secrets/diagnostics';
+import { lintActiveDocument } from './lint';
+import {
+  runPlaybookInTerminal,
+  listTasks,
+  runSequential,
+} from './runner';
+import type { RunStep } from './runner';
+import { parseTaskNames } from './debug/pure';
+import { findFirstExisting, parseQueueFile, listPlaybookFiles } from './queue';
+import * as path from 'node:path';
+import {
+  GraphPanel,
+  buildRolesGraph,
+} from './graph/panel';
+
+const ANSIBLE_IDS = ['ansible', 'yaml'];
+
+export function activate(context: vscode.ExtensionContext): void {
+  const token = vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (editor) void lintActiveDocument(editor.document);
+  });
+  context.subscriptions.push(token);
+
+  const secretsCollection =
+    vscode.languages.createDiagnosticCollection(SECRET_DIAGNOSTIC_SOURCE);
+  context.subscriptions.push(secretsCollection);
+
+  // completion
+  const completion = vscode.languages.registerCompletionItemProvider(
+    ANSIBLE_IDS,
+    new AnsibleCompletionProvider(),
+  );
+  context.subscriptions.push(completion);
+
+  // code actions for secrets
+  const codeAction = vscode.languages.registerCodeActionsProvider(
+    ANSIBLE_IDS,
+    new SecretCodeActionProvider(),
+  );
+  context.subscriptions.push(codeAction);
+
+  // scan secrets on open/save for ansible/yaml
+  const secretWatch = vscode.workspace.onDidSaveTextDocument((doc) =>
+    scanSecrets(doc, secretsCollection),
+  );
+  context.subscriptions.push(secretWatch);
+  for (const doc of vscode.workspace.textDocuments) {
+    if (ANSIBLE_IDS.includes(doc.languageId)) scanSecrets(doc, secretsCollection);
+  }
+
+  // lint on save
+  const lintWatch = vscode.workspace.onDidSaveTextDocument((doc) => {
+    if (ANSIBLE_IDS.includes(doc.languageId) && isLintOnSave()) {
+      void lintActiveDocument(doc);
+    }
+  });
+  context.subscriptions.push(lintWatch);
+
+  // commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.runPlaybook', () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        void vscode.window.showInformationMessage('Откройте playbook перед запуском.');
+        return;
+      }
+      runPlaybookInTerminal(editor.document.uri.fsPath);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.runLint', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      await lintActiveDocument(editor.document);
+      void vscode.window.showInformationMessage('ansible-lint завершён.');
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.showGraph', async () => {
+      const root = vscode.workspace.workspaceFolders?.[0];
+      if (!root) {
+        void vscode.window.showWarningMessage('Нет открытой папки проекта.');
+        return;
+      }
+      const graph = buildRolesGraph(root.uri.fsPath);
+      if (graph.nodes.length === 0) {
+        void vscode.window.showWarningMessage('Не найдено ролей/плейбуков для графа.');
+      }
+      GraphPanel.createOrShow(context.extensionUri, graph);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.listTasks', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const output = await listTasks(editor.document.uri.fsPath);
+      const names = parseTaskNames(output);
+      if (names.length === 0) {
+        void vscode.window.showInformationMessage('Задачи не найдены.');
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(names, {
+        placeHolder: 'Выберите задачу (просмотр)',
+      });
+      if (picked) {
+        void vscode.window.showInformationMessage(`Задача: ${picked}`);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.runFromTask', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const output = await listTasks(editor.document.uri.fsPath);
+      const names = parseTaskNames(output);
+      if (names.length === 0) {
+        void vscode.window.showInformationMessage('Задачи не найдены.');
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(names, {
+        placeHolder: 'Запустить с задачи',
+      });
+      if (picked) {
+        runPlaybookInTerminal(editor.document.uri.fsPath, ['--start-at-task', `"${picked}"`]);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.detectSecrets', async () => {
+      const root = vscode.workspace.workspaceFolders?.[0];
+      if (!root) return;
+      let count = 0;
+      for (const doc of vscode.workspace.textDocuments) {
+        if (!ANSIBLE_IDS.includes(doc.languageId)) continue;
+        const diags = scanSecrets(doc, secretsCollection);
+        count += diags;
+      }
+      void vscode.window.showInformationMessage(
+        `Найдено потенциальных секретов: ${count}`,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.runQueue', async () => {
+      await runQueue();
+    }),
+  );
+}
+
+function scanSecrets(
+  doc: vscode.TextDocument,
+  collection: vscode.DiagnosticCollection,
+): number {
+  if (!ANSIBLE_IDS.includes(doc.languageId)) return 0;
+  const cfg = vscode.workspace.getConfiguration('ansibleToolkit');
+  if (!cfg.get<boolean>('secrets.enabled', true)) {
+    collection.delete(doc.uri);
+    return 0;
+  }
+  const diags = scanDocument(doc);
+  collection.set(doc.uri, diags);
+  return diags.length;
+}
+
+function isLintOnSave(): boolean {
+  const cfg = vscode.workspace.getConfiguration('ansibleToolkit');
+  return cfg.get<boolean>('lint.onSave', true);
+}
+
+/**
+ * Очередь запуска в стиле колаб-ноутбука. Источник шагов определяется так:
+ *   1. если в корне есть `run-queue.yml` — читаем список команд/плейбуков из него;
+ *   2. иначе — мультивыбор .yml-плейбуков через QuickPick.
+ * Шаги выполняются последовательно с паузами логгирования в OutputChannel.
+ */
+async function runQueue(): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0];
+  if (!root) {
+    void vscode.window.showWarningMessage('Нет открытой папки проекта.');
+    return;
+  }
+
+  const queueFile = findFirstExisting([
+    path.join(root.uri.fsPath, 'run-queue.yml'),
+    path.join(root.uri.fsPath, 'run-queue.yaml'),
+  ]);
+
+  let steps: RunStep[] = [];
+  if (queueFile) {
+    steps = parseQueueFile(queueFile, root.uri.fsPath);
+    if (steps.length === 0) {
+      void vscode.window.showWarningMessage(
+        `Файл очереди ${path.basename(queueFile)} пуст или не содержит команд.`,
+      );
+      return;
+    }
+  } else {
+    const picks = await pickPlaybooks(root.uri.fsPath);
+    if (!picks || picks.length === 0) return;
+    steps = picks.map((p) => ({
+      title: path.basename(p),
+      command: p,
+      isPlaybook: true,
+    }));
+  }
+
+  void vscode.window.showInformationMessage(
+    `Запуск очереди из ${steps.length} шагов…`,
+  );
+
+  await runSequential(steps, (step, idx, total) => {
+    void vscode.window.showInformationMessage(`[${idx + 1}/${total}] ${step.title}`);
+  });
+}
+
+/** Мультивыбор плейбуков (все .yml/.yaml в корне, кроме служебных). */
+async function pickPlaybooks(root: string): Promise<string[] | undefined> {
+  const entries = listPlaybookFiles(root);
+
+  if (entries.length === 0) {
+    void vscode.window.showInformationMessage('В корне нет .yml файлов для очереди.');
+    return undefined;
+  }
+
+  const picks = await vscode.window.showQuickPick(
+    entries.map((e) => ({ label: e, picked: false })),
+    {
+      placeHolder: 'Выберите плейбуки (Enter — подтвердить, Space — выбрать несколько)',
+      canPickMany: true,
+    },
+  );
+  if (!picks) return undefined;
+  return picks.map((p) => path.join(root, p.label));
+}
+
+export function deactivate(): void {}

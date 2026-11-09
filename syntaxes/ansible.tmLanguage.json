@@ -1,0 +1,76 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Ansible",
+  "scopeName": "source.ansible",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#jinja" },
+    { "include": "#scalar" },
+    { "include": "#list-item" },
+    { "include": "#key" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "^\\s*(#).*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.ansible" }
+      },
+      "name": "comment.line.number-sign.ansible"
+    },
+    "jinja": {
+      "patterns": [
+        {
+          "begin": "\\{\\{",
+          "end": "\\}\\}",
+          "name": "string.template.jinja.ansible",
+          "beginCaptures": { "0": { "name": "punctuation.definition.variable.ansible" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.variable.ansible" } },
+          "patterns": [
+            {
+              "match": "\\b(?:true|false|True|False|none|None)\\b",
+              "name": "constant.language.boolean.ansible"
+            }
+          ]
+        },
+        {
+          "begin": "\\{%",
+          "end": "%\\}",
+          "name": "meta.statement.jinja.ansible",
+          "beginCaptures": { "0": { "name": "punctuation.definition.statement.ansible" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.statement.ansible" } },
+          "patterns": [
+            {
+              "match": "\\b(?:for|if|else|endif|endfor|set|include|import)\\b",
+              "name": "keyword.control.jinja.ansible"
+            }
+          ]
+        }
+      ]
+    },
+    "key": {
+      "match": "^\\s*([\\w-]+)(?=:\\s)",
+      "captures": {
+        "1": { "name": "entity.name.tag.ansible" }
+      }
+    },
+    "list-item": {
+      "match": "^\\s*(-\\s+)((?:name|hosts|tasks|roles|vars|include|import_playbook|become|gather_facts)\\b)",
+      "captures": {
+        "1": { "name": "punctuation.definition.list.begin.ansible" },
+        "2": { "name": "entity.name.function.ansible" }
+      }
+    },
+    "scalar": {
+      "patterns": [
+        {
+          "match": "\\b(?:true|false|yes|no|on|off|none|null)\\b",
+          "name": "constant.language.boolean.ansible"
+        },
+        {
+          "match": "(?<=[-_]?)(?:ansible-)?(?:pip|apt|yum|dnf|shell|command|copy|template|file|service|systemd|user|group|lineinfile|blockinfile|replace|git|unarchive|get_url|uri|assert|fail|debug|set_fact|include_tasks|import_tasks|include_role|import_role|wait_for|pause|register|when|loop|with_items|become|hosts|tasks|handlers|vars|tags|ignore_errors|changed_when|notify)\\b",
+          "name": "support.function.ansible"
+        }
+      ]
+    }
+  }
+}

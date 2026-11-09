@@ -1,0 +1,191 @@
+{
+  "name": "ansible-toolkit",
+  "displayName": "Ansible Toolkit",
+  "description": "Многофункциональный тулбокс для Ansible: подсветка, автокомплит модулей, запуск playbook, lint, графы, детекция секретов и дебаг.",
+  "version": "0.1.0",
+  "publisher": "ansible-ide",
+  "icon": "icon.png",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Debuggers",
+    "Visualization"
+  ],
+  "keywords": [
+    "ansible",
+    "yaml",
+    "playbook",
+    "devops",
+    "devsecops"
+  ],
+  "activationEvents": [
+    "onLanguage:yaml",
+    "onLanguage:ansible",
+    "onCommand:ansibleToolkit.runPlaybook",
+    "onCommand:ansibleToolkit.showGraph",
+    "onCommand:ansibleToolkit.runLint",
+    "onCommand:ansibleToolkit.listTasks",
+    "onCommand:ansibleToolkit.detectSecrets"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ansible",
+        "aliases": [
+          "Ansible",
+          "ansible"
+        ],
+        "extensions": [
+          ".yml",
+          ".yaml"
+        ],
+        "filenames": [
+          "ansible.cfg",
+          "requirements.yml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ansible",
+        "scopeName": "source.ansible",
+        "path": "./syntaxes/ansible.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.ansible.jinja",
+        "path": "./syntaxes/jinja.tmLanguage.json",
+        "injectTo": [
+          "source.ansible",
+          "source.yaml"
+        ]
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "ansible-icons",
+        "label": "Ansible Icons",
+        "path": "./fileicons/ansible-icon-theme.json"
+      }
+    ],
+    "configuration": {
+      "title": "Ansible Toolkit",
+      "properties": {
+        "ansibleToolkit.ansiblePlaybookPath": {
+          "type": "string",
+          "default": "ansible-playbook",
+          "description": "Путь к исполняемому файлу ansible-playbook (или имя на PATH)."
+        },
+        "ansibleToolkit.ansibleLintPath": {
+          "type": "string",
+          "default": "ansible-lint",
+          "description": "Путь к исполняемому файлу ansible-lint (или имя на PATH)."
+        },
+        "ansibleToolkit.lint.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Показывать диагностику ansible-lint при сохранении."
+        },
+        "ansibleToolkit.lint.onSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Запускать ansible-lint автоматически после сохранения файла."
+        },
+        "ansibleToolkit.secrets.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Сканировать playbook и vars на секреты в открытом виде."
+        },
+        "ansibleToolkit.defaultInventory": {
+          "type": "string",
+          "default": "",
+          "description": "Инвентарь по умолчанию (например, inventory/hosts.yml)."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "ansibleToolkit.runPlaybook",
+        "title": "Ansible: Запустить playbook",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.runLint",
+        "title": "Ansible: Запустить ansible-lint",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.showGraph",
+        "title": "Ansible: Показать граф проекта",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.listTasks",
+        "title": "Ansible: Список задач playbook",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.runFromTask",
+        "title": "Ansible: Запустить с конкретной задачи",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.detectSecrets",
+        "title": "Ansible: Найти секреты в проекте",
+        "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.runQueue",
+        "title": "Ansible: Запустить плейбуки по очереди (queue)",
+        "category": "Ansible Toolkit"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "ansibleToolkit.runPlaybook",
+          "when": "editorLangId == ansible || editorLangId == yaml",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ansibleToolkit.runPlaybook",
+          "when": "editorLangId == ansible || editorLangId == yaml"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "ansibleToolkit.runPlaybook",
+        "key": "ctrl+shift+p",
+        "mac": "cmd+shift+p",
+        "when": "editorTextFocus && (editorLangId == ansible || editorLangId == yaml)"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "typecheck": "tsc -p ./ --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.26.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  }
+}

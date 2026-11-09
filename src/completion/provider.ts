@@ -1,0 +1,119 @@
+import * as vscode from 'vscode';
+import { ANSIBLE_KEYWORDS, filterModules, moduleByName } from './modules';
+
+/**
+ * Поставщик автодополнения для Ansible YAML:
+ *  - имена модулей в `tasks:` / `handlers:` / `pre_tasks:` / `post_tasks:`;
+ *  - ключевые слова плейбука;
+ *  - опции конкретного модуля внутри строки `- name:`.
+ */
+export class AnsibleCompletionProvider implements vscode.CompletionItemProvider {
+  provideCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+  ): vscode.CompletionItem[] {
+    const line = document.lineAt(position.line);
+    const textBefore = line.text.slice(0, position.character);
+    const indent = line.text.length - line.text.trimStart().length;
+    const isList = /^\s*-?\s*/.test(trimStart(textBefore)) || textBefore.trim() === '-';
+
+    // Контекст: внутри списка задач, где первым ключом идёт имя модуля.
+    const inTasksList = isUnderKey(document, position, /tasks|handlers|pre_tasks|post_tasks/);
+
+    if (inTasksList && isListItem(document, position)) {
+      return this.moduleCompletions(textBefore);
+    }
+
+    // После `- name:` дополняем опции модуля.
+    const moduleName = this.detectModuleForTask(document, position);
+    if (moduleName) {
+      return this.optionCompletions(moduleName, indent);
+    }
+
+    // Общие ключевые слова — на верхнем уровне плейбука.
+    return ANSIBLE_KEYWORDS.map((k) => new vscode.CompletionItem(k, vscode.CompletionItemKind.Keyword));
+  }
+
+  private moduleCompletions(textBefore: string): vscode.CompletionItem[] {
+    const trimmed = textBefore.trim();
+    // Убираем ведущий `- `.
+    const prefix = trimmed.replace(/^-\s*/, '');
+    const items = filterModules(prefix);
+    return items.map((m) => {
+      const item = new vscode.CompletionItem(m.name, vscode.CompletionItemKind.Module);
+      item.detail = m.doc;
+      item.documentation = new vscode.MarkdownString(m.doc);
+      item.insertText = new vscode.SnippetString(`${m.name}:\n\t\$1`);
+      item.filterText = m.name;
+      return item;
+    });
+  }
+
+  private optionCompletions(moduleName: string, indent: number): vscode.CompletionItem[] {
+    const mod = moduleByName(moduleName);
+    if (!mod) return [];
+    const pad = ' '.repeat(indent);
+    return mod.options.map((opt) => {
+      const item = new vscode.CompletionItem(opt, vscode.CompletionItemKind.Field);
+      item.detail = `Опция модуля ${moduleName}`;
+      item.insertText = `${pad}${opt}: \$1`;
+      return item;
+    });
+  }
+
+  /** Определяет имя модуля для текущей задачи (первый ключ списка). */
+  private detectModuleForTask(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+  ): string | null {
+    // Ищем ближайший вверх `- <module>:` (первый `- <something>:` после `- name:`).
+    let nameSeen = false;
+    for (let l = position.line - 1; l >= 0; l--) {
+      const line = document.lineAt(l).text;
+      const m = line.match(/^\s*-\s+name\s*:/);
+      if (m) {
+        nameSeen = true;
+        continue;
+      }
+      if (nameSeen) {
+        const mod = line.match(/^\s*-\s+([\w.]+)\s*:/);
+        if (mod) return mod[1] ?? null;
+        // Вышли из текущей задачи.
+        break;
+      }
+      // Пустая строка или новый верхний уровень завершает поиск.
+      if (line.trim() === '' && nameSeen) break;
+    }
+    return null;
+  }
+}
+
+function trimStart(s: string): string {
+  return s.replace(/^\s+/, '');
+}
+
+function isUnderKey(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  keyRe: RegExp,
+): boolean {
+  for (let l = position.line; l >= 0; l--) {
+    const line = document.lineAt(l).text;
+    const m = line.match(/^\s*([\w]+)\s*:/);
+    if (m) {
+      if (keyRe.test(m[1] ?? '')) return true;
+      if ((line.trimStart().length < document.lineAt(l).text.trimStart().length) || l < position.line - 30) {
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
+function isListItem(document: vscode.TextDocument, position: vscode.Position): boolean {
+  const line = document.lineAt(position.line).text;
+  // Либо незавершённая строка `-`, либо ранее был `- name:` и мы на новой строке модуля.
+  if (/^\s*-\s*$/.test(line)) return true;
+  const m = line.match(/^\s*-\s*(\S*)$/);
+  return !!m;
+}
