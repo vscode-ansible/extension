@@ -33,4 +33,4 @@ jobs:
         run: npm run compile
 
       - name: Publish to Visual Studio Marketplace
-        run: npx --yes -p @vscode/vsce@2.32.0 vsce publish --oidc
+        run: npx --yes @vscode/vsce@latest publish --oidc
