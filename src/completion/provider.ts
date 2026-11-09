@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import { ANSIBLE_KEYWORDS, filterModules, moduleByName } from './modules';
 
 /**
- * Поставщик автодополнения для Ansible YAML:
- *  - имена модулей в `tasks:` / `handlers:` / `pre_tasks:` / `post_tasks:`;
- *  - ключевые слова плейбука;
- *  - опции конкретного модуля внутри строки `- name:`.
+ * Completion provider for Ansible YAML:
+ *  - module names under `tasks:` / `handlers:` / `pre_tasks:` / `post_tasks:`;
+ *  - playbook keywords;
+ *  - options of the current module inside a `- name:` block.
  */
 export class AnsibleCompletionProvider implements vscode.CompletionItemProvider {
   provideCompletionItems(
@@ -17,26 +17,26 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     const indent = line.text.length - line.text.trimStart().length;
     const isList = /^\s*-?\s*/.test(trimStart(textBefore)) || textBefore.trim() === '-';
 
-    // Контекст: внутри списка задач, где первым ключом идёт имя модуля.
+    // Context: inside a task list, where the first key is the module name.
     const inTasksList = isUnderKey(document, position, /tasks|handlers|pre_tasks|post_tasks/);
 
     if (inTasksList && isListItem(document, position)) {
       return this.moduleCompletions(textBefore);
     }
 
-    // После `- name:` дополняем опции модуля.
+    // After `- name:` complete the module options.
     const moduleName = this.detectModuleForTask(document, position);
     if (moduleName) {
       return this.optionCompletions(moduleName, indent);
     }
 
-    // Общие ключевые слова — на верхнем уровне плейбука.
+    // General keywords on the top level of the playbook.
     return ANSIBLE_KEYWORDS.map((k) => new vscode.CompletionItem(k, vscode.CompletionItemKind.Keyword));
   }
 
   private moduleCompletions(textBefore: string): vscode.CompletionItem[] {
     const trimmed = textBefore.trim();
-    // Убираем ведущий `- `.
+    // Strip the leading `- `.
     const prefix = trimmed.replace(/^-\s*/, '');
     const items = filterModules(prefix);
     return items.map((m) => {
@@ -55,18 +55,18 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     const pad = ' '.repeat(indent);
     return mod.options.map((opt) => {
       const item = new vscode.CompletionItem(opt, vscode.CompletionItemKind.Field);
-      item.detail = `Опция модуля ${moduleName}`;
+      item.detail = `Option of module ${moduleName}`;
       item.insertText = `${pad}${opt}: \$1`;
       return item;
     });
   }
 
-  /** Определяет имя модуля для текущей задачи (первый ключ списка). */
+  /** Detect the module name of the current task (the first key in the list). */
   private detectModuleForTask(
     document: vscode.TextDocument,
     position: vscode.Position,
   ): string | null {
-    // Ищем ближайший вверх `- <module>:` (первый `- <something>:` после `- name:`).
+    // Search upward for `- <module>:` (the first `- <something>:` after `- name:`).
     let nameSeen = false;
     for (let l = position.line - 1; l >= 0; l--) {
       const line = document.lineAt(l).text;
@@ -78,10 +78,10 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
       if (nameSeen) {
         const mod = line.match(/^\s*-\s+([\w.]+)\s*:/);
         if (mod) return mod[1] ?? null;
-        // Вышли из текущей задачи.
+        // Left the current task.
         break;
       }
-      // Пустая строка или новый верхний уровень завершает поиск.
+      // An empty line or a new top level ends the search.
       if (line.trim() === '' && nameSeen) break;
     }
     return null;
@@ -112,7 +112,7 @@ function isUnderKey(
 
 function isListItem(document: vscode.TextDocument, position: vscode.Position): boolean {
   const line = document.lineAt(position.line).text;
-  // Либо незавершённая строка `-`, либо ранее был `- name:` и мы на новой строке модуля.
+  // Either an unfinished `-` line, or after `- name:` we are on a new module line.
   if (/^\s*-\s*$/.test(line)) return true;
   const m = line.match(/^\s*-\s*(\S*)$/);
   return !!m;

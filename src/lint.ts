@@ -11,8 +11,8 @@ interface LintFinding {
 }
 
 /**
- * Парсит вывод `ansible-lint` (формат по умолчанию и strict) в диагностику VS Code.
- * Пример строки: `playbook.yml:12: [E208] File permissions unset or incorrect`.
+ * Parses `ansible-lint` output (default and strict form) into VS Code diagnostics.
+ * Example line: `playbook.yml:12: [E208] File permissions unset or incorrect`.
  */
 function parseLintOutput(output: string): LintFinding[] {
   const findings: LintFinding[] = [];
@@ -31,7 +31,7 @@ function parseLintOutput(output: string): LintFinding[] {
       });
       continue;
     }
-    // Fallback: общая строка ошибки.
+    // Fallback: a generic error line.
     const warn = line.match(/^\[(WARNING|ERROR)\]\s*(.*)$/i);
     if (warn) {
       findings.push({
@@ -68,7 +68,7 @@ export function lintToDiagnostics(
   return diagnostics;
 }
 
-/** Запускает ansible-lint на активном документе и обновляет диагностику. */
+/** Runs ansible-lint on the active document and updates diagnostics. */
 export async function lintActiveDocument(document: vscode.TextDocument): Promise<void> {
   const cfg = vscode.workspace.getConfiguration('ansibleToolkit');
   if (!cfg.get<boolean>('lint.enabled', true)) return;

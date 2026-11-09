@@ -64,7 +64,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ansibleToolkit.runPlaybook', () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        void vscode.window.showInformationMessage('Откройте playbook перед запуском.');
+        void vscode.window.showInformationMessage('Open a playbook before running.');
         return;
       }
       runPlaybookInTerminal(editor.document.uri.fsPath);
@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       await lintActiveDocument(editor.document);
-      void vscode.window.showInformationMessage('ansible-lint завершён.');
+      void vscode.window.showInformationMessage('ansible-lint completed.');
     }),
   );
 
@@ -84,12 +84,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ansibleToolkit.showGraph', async () => {
       const root = vscode.workspace.workspaceFolders?.[0];
       if (!root) {
-        void vscode.window.showWarningMessage('Нет открытой папки проекта.');
+        void vscode.window.showWarningMessage('No folder is open.');
         return;
       }
       const graph = buildRolesGraph(root.uri.fsPath);
       if (graph.nodes.length === 0) {
-        void vscode.window.showWarningMessage('Не найдено ролей/плейбуков для графа.');
+        void vscode.window.showWarningMessage('No roles or playbooks found for the graph.');
       }
       GraphPanel.createOrShow(context.extensionUri, graph);
     }),
@@ -102,14 +102,14 @@ export function activate(context: vscode.ExtensionContext): void {
       const output = await listTasks(editor.document.uri.fsPath);
       const names = parseTaskNames(output);
       if (names.length === 0) {
-        void vscode.window.showInformationMessage('Задачи не найдены.');
+        void vscode.window.showInformationMessage('No tasks found.');
         return;
       }
       const picked = await vscode.window.showQuickPick(names, {
-        placeHolder: 'Выберите задачу (просмотр)',
+        placeHolder: 'Select a task (preview)',
       });
       if (picked) {
-        void vscode.window.showInformationMessage(`Задача: ${picked}`);
+        void vscode.window.showInformationMessage(`Task: ${picked}`);
       }
     }),
   );
@@ -121,11 +121,11 @@ export function activate(context: vscode.ExtensionContext): void {
       const output = await listTasks(editor.document.uri.fsPath);
       const names = parseTaskNames(output);
       if (names.length === 0) {
-        void vscode.window.showInformationMessage('Задачи не найдены.');
+        void vscode.window.showInformationMessage('No tasks found.');
         return;
       }
       const picked = await vscode.window.showQuickPick(names, {
-        placeHolder: 'Запустить с задачи',
+        placeHolder: 'Run from task',
       });
       if (picked) {
         runPlaybookInTerminal(editor.document.uri.fsPath, ['--start-at-task', `"${picked}"`]);
@@ -144,7 +144,7 @@ export function activate(context: vscode.ExtensionContext): void {
         count += diags;
       }
       void vscode.window.showInformationMessage(
-        `Найдено потенциальных секретов: ${count}`,
+        `Potential secrets found: ${count}`,
       );
     }),
   );
@@ -177,15 +177,15 @@ function isLintOnSave(): boolean {
 }
 
 /**
- * Очередь запуска в стиле колаб-ноутбука. Источник шагов определяется так:
- *   1. если в корне есть `run-queue.yml` — читаем список команд/плейбуков из него;
- *   2. иначе — мультивыбор .yml-плейбуков через QuickPick.
- * Шаги выполняются последовательно с паузами логгирования в OutputChannel.
+ * Sequential run queue in a colab-notebook style. Steps are determined by:
+ *   1. if `run-queue.yml` exists in the root — read the command/playbook list from it;
+ *   2. otherwise — multi-select .yml playbooks via QuickPick.
+ * Steps run sequentially, with progress logged to an OutputChannel.
  */
 async function runQueue(): Promise<void> {
   const root = vscode.workspace.workspaceFolders?.[0];
   if (!root) {
-    void vscode.window.showWarningMessage('Нет открытой папки проекта.');
+    void vscode.window.showWarningMessage('No folder is open.');
     return;
   }
 
@@ -199,7 +199,7 @@ async function runQueue(): Promise<void> {
     steps = parseQueueFile(queueFile, root.uri.fsPath);
     if (steps.length === 0) {
       void vscode.window.showWarningMessage(
-        `Файл очереди ${path.basename(queueFile)} пуст или не содержит команд.`,
+        `Queue file ${path.basename(queueFile)} is empty or contains no commands.`,
       );
       return;
     }
@@ -214,7 +214,7 @@ async function runQueue(): Promise<void> {
   }
 
   void vscode.window.showInformationMessage(
-    `Запуск очереди из ${steps.length} шагов…`,
+    `Running queue of ${steps.length} steps...`,
   );
 
   await runSequential(steps, (step, idx, total) => {
@@ -222,19 +222,19 @@ async function runQueue(): Promise<void> {
   });
 }
 
-/** Мультивыбор плейбуков (все .yml/.yaml в корне, кроме служебных). */
+/** Multi-select playbooks (all .yml/.yaml in the root, except special ones). */
 async function pickPlaybooks(root: string): Promise<string[] | undefined> {
   const entries = listPlaybookFiles(root);
 
   if (entries.length === 0) {
-    void vscode.window.showInformationMessage('В корне нет .yml файлов для очереди.');
+    void vscode.window.showInformationMessage('No .yml files in the root for a queue.');
     return undefined;
   }
 
   const picks = await vscode.window.showQuickPick(
     entries.map((e) => ({ label: e, picked: false })),
     {
-      placeHolder: 'Выберите плейбуки (Enter — подтвердить, Space — выбрать несколько)',
+      placeHolder: 'Select playbooks (Enter to confirm, Space to multi-select)',
       canPickMany: true,
     },
   );

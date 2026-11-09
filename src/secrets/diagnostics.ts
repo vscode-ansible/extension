@@ -9,7 +9,7 @@ interface FileLeak {
   end: number;
 }
 
-/** Прогоняет сканер секретов по файлу и обновляет диагностику. */
+/** Runs the secret scanner over a file and returns diagnostics. */
 export function scanDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
   const text = document.getText();
   if (SECRET_PATTERNS.ansibleVaultHeader.test(text)) return [];
@@ -26,15 +26,15 @@ export function scanDocument(document: vscode.TextDocument): vscode.Diagnostic[]
       leak.message,
       vscode.DiagnosticSeverity.Warning,
     );
-    d.source = 'Ansible Toolkit (секреты)';
+    d.source = 'Ansible Toolkit (secrets)';
     diagnostics.push(d);
   }
   return diagnostics;
 }
 
-const SECRET_DIAGNOSTIC_SOURCE = 'Ansible Toolkit (секреты)';
+const SECRET_DIAGNOSTIC_SOURCE = 'Ansible Toolkit (secrets)';
 
-/** Провайдер CodeAction: предлагает «обернуть в ansible-vault» / «заменить шаблоном». */
+/** CodeAction provider: offers "wrap in ansible-vault" / "replace with template". */
 export class SecretCodeActionProvider implements vscode.CodeActionProvider {
   provideCodeActions(
     document: vscode.TextDocument,
@@ -44,7 +44,7 @@ export class SecretCodeActionProvider implements vscode.CodeActionProvider {
     if (!/password|secret|token|api[_-]?key|AKIA/i.test(text)) return [];
 
     const fixVault = new vscode.CodeAction(
-      'Заменить на шаблон ansible-vault ({{ vault_... }})',
+      'Replace with an ansible-vault template ({{ vault_... }})',
       vscode.CodeActionKind.QuickFix,
     );
     fixVault.edit = new vscode.WorkspaceEdit();

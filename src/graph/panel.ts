@@ -30,7 +30,7 @@ function renderGraphHtml(graph: GraphData): string {
 </style>
 </head>
 <body>
-<div class="legend"><b>${graph.kind}</b> · узлов ${graph.nodes.length} · связей ${graph.edges.length}</div>
+<div class="legend"><b>${graph.kind}</b> · nodes ${graph.nodes.length} · edges ${graph.edges.length}</div>
 <svg id="svg"></svg>
 <script>
   const data = JSON.parse(${JSON.stringify(dataJson)});
@@ -113,7 +113,7 @@ export class GraphPanel {
     }
     const panel = vscode.window.createWebviewPanel(
       'ansibleGraph',
-      `Граф Ansible — ${graph.kind}`,
+      `Ansible graph — ${graph.kind}`,
       vscode.ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: true },
     );
@@ -123,12 +123,12 @@ export class GraphPanel {
   }
 
   private update(graph: GraphData): void {
-    this.panel.title = `Граф Ansible — ${graph.kind}`;
+    this.panel.title = `Ansible graph — ${graph.kind}`;
     this.panel.webview.html = renderGraphHtml(graph);
   }
 }
 
-/** Строит граф ролей для корня проекта. */
+/** Builds the roles graph for the project root. */
 export function buildRolesGraph(projectRoot: string): GraphData {
   return shapeRoles(projectRoot);
 }

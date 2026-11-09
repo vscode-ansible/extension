@@ -8,7 +8,7 @@ export interface SpawnResult {
   output: string;
 }
 
-/** Запускает процесс с захватом stdout+stderr и возвращает код возврата. */
+/** Runs a process capturing stdout+stderr and returns the exit code. */
 export function runCommand(
   executable: string,
   args: string[],
@@ -37,7 +37,7 @@ export function runCommand(
   });
 }
 
-/** Пишет в интегрированный терминал VS Code и возвращает терминал. */
+/** Writes to the integrated VS Code terminal and returns it. */
 export function writeToTerminal(name: string, command: string, cwd?: string): vscode.Terminal {
   const terminal = vscode.window.createTerminal({ name, cwd });
   terminal.show();
@@ -50,7 +50,7 @@ function configExecutable(key: 'ansiblePlaybookPath' | 'ansibleLintPath'): strin
   return cfg.get<string>(key) ?? (key === 'ansiblePlaybookPath' ? 'ansible-playbook' : 'ansible-lint');
 }
 
-/** Путь ansible-playbook из конфига (или PATH). */
+/** Path of ansible-playbook from config (or PATH). */
 export function playbookExecutable(): string {
   return configExecutable('ansiblePlaybookPath');
 }
@@ -69,7 +69,7 @@ function relToWorkspace(filePath: string): string {
   return path.relative(root, filePath) || path.basename(filePath);
 }
 
-/** Формирует команду ansible-playbook для файла плейбука. */
+/** Builds the ansible-playbook command for a playbook file. */
 export function buildPlaybookCommand(playbookPath: string, extraArgs: string[] = []): string {
   const exec = playbookExecutable();
   const rel = relToWorkspace(playbookPath);
@@ -79,13 +79,13 @@ export function buildPlaybookCommand(playbookPath: string, extraArgs: string[] =
   return [args[0] ?? exec, ...args.slice(1)].join(' ');
 }
 
-/** Запускает плейбук в терминале. */
+/** Runs the playbook in a terminal. */
 export function runPlaybookInTerminal(playbookPath: string, extraArgs: string[] = []): void {
   const command = buildPlaybookCommand(playbookPath, extraArgs);
   writeToTerminal('ansible-playbook', command, workspaceRoot());
 }
 
-/** Запускает ansible-lint и возвращает сырой вывод (для парсинга в диагностику). */
+/** Runs ansible-lint and returns raw output (for diagnostic parsing). */
 export async function runLint(projectRoot: string): Promise<SpawnResult> {
   const exec = lintExecutable();
   try {
@@ -95,7 +95,7 @@ export async function runLint(projectRoot: string): Promise<SpawnResult> {
   }
 }
 
-/** Получает список задач через ansible-playbook --list-tasks. */
+/** Gets the task list via ansible-playbook --list-tasks. */
 export async function listTasks(playbookPath: string): Promise<string> {
   const exec = playbookExecutable();
   const rel = relToWorkspace(playbookPath);
@@ -107,20 +107,20 @@ export async function listTasks(playbookPath: string): Promise<string> {
   }
 }
 
-/** Одна команда в очереди последовательного запуска (colab-стиль). */
+/** A single command in a sequential run queue (colab-style). */
 export interface RunStep {
-  /** Человекочитаемый заголовок шага. */
+  /** Human-readable step title. */
   title: string;
-  /** Полная команда или имя файла плейбука (если `isPlaybook`). */
+  /** Full command or playbook file name (if `isPlaybook`). */
   command: string;
-  /** true — трактовать command как путь к .yml и собрать через buildPlaybookCommand. */
+  /** true — treat command as a .yml path and build via buildPlaybookCommand. */
   isPlaybook?: boolean;
 }
 
 /**
- * Последовательно (по очереди) выполняет шаги в одном OutputChannel, ожидая
- * завершения каждой команды перед запуском следующей. Каждый шаг отделяется
- * баннером в выводе, как клетка notebook.
+ * Sequentially runs steps in a single OutputChannel, waiting for
+ * each command to finish before starting the next. Each step is separated by
+ * a banner in the output, like a notebook cell.
  */
 export async function runSequential(
   steps: RunStep[],
@@ -138,7 +138,7 @@ export async function runSequential(
     const command = step.isPlaybook ? buildPlaybookCommand(step.command) : step.command;
 
     channel.appendLine(divider);
-    channel.appendLine(`Шаг ${i + 1}/${steps.length} — ${step.title}`);
+    channel.appendLine(`Step ${i + 1}/${steps.length} — ${step.title}`);
     channel.appendLine(`$ ${command}`);
     channel.appendLine(divider);
 
@@ -146,16 +146,16 @@ export async function runSequential(
 
     const [exec, ...rest] = parseRunArgs(command);
     if (!exec) {
-      channel.appendLine('(пропуск: пустая команда)');
+      channel.appendLine('(skipped: empty command)');
       continue;
     }
 
     const res = await runCommand(exec, rest, cwd, (chunk) => channel.append(chunk));
     channel.appendLine('');
-    channel.appendLine(`→ код возврата: ${res.code}`);
+    channel.appendLine(`→ exit code: ${res.code}`);
     onStepEnd?.(step, i, res.code);
   }
 
   channel.appendLine(divider);
-  channel.appendLine('Очередь завершена.');
+  channel.appendLine('Queue finished.');
 }

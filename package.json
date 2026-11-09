@@ -1,7 +1,7 @@
 {
   "name": "ansible-toolkit",
   "displayName": "Ansible Toolkit",
-  "description": "Многофункциональный тулбокс для Ansible: подсветка, автокомплит модулей, запуск playbook, lint, графы, детекция секретов и дебаг.",
+  "description": "A full-featured Ansible toolkit for VS Code: syntax highlighting, module autocomplete, playbook runner, linting, project graphs, secret detection, and debugging.",
   "version": "0.1.0",
   "publisher": "ansible-ide",
   "icon": "icon.png",
@@ -79,69 +79,69 @@
         "ansibleToolkit.ansiblePlaybookPath": {
           "type": "string",
           "default": "ansible-playbook",
-          "description": "Путь к исполняемому файлу ansible-playbook (или имя на PATH)."
+          "description": "Path to the ansible-playbook executable (or a name on PATH)."
         },
         "ansibleToolkit.ansibleLintPath": {
           "type": "string",
           "default": "ansible-lint",
-          "description": "Путь к исполняемому файлу ansible-lint (или имя на PATH)."
+          "description": "Path to the ansible-lint executable (or a name on PATH)."
         },
         "ansibleToolkit.lint.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Показывать диагностику ansible-lint при сохранении."
+          "description": "Enable ansible-lint diagnostics."
         },
         "ansibleToolkit.lint.onSave": {
           "type": "boolean",
           "default": true,
-          "description": "Запускать ansible-lint автоматически после сохранения файла."
+          "description": "Run ansible-lint automatically after saving a file."
         },
         "ansibleToolkit.secrets.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Сканировать playbook и vars на секреты в открытом виде."
+          "description": "Scan playbooks and vars for secrets in plain text."
         },
         "ansibleToolkit.defaultInventory": {
           "type": "string",
           "default": "",
-          "description": "Инвентарь по умолчанию (например, inventory/hosts.yml)."
+          "description": "Default inventory (e.g. inventory/hosts.yml)."
         }
       }
     },
     "commands": [
       {
         "command": "ansibleToolkit.runPlaybook",
-        "title": "Ansible: Запустить playbook",
+        "title": "Ansible: Run playbook",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.runLint",
-        "title": "Ansible: Запустить ansible-lint",
+        "title": "Ansible: Run ansible-lint",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.showGraph",
-        "title": "Ansible: Показать граф проекта",
+        "title": "Ansible: Show project graph",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.listTasks",
-        "title": "Ansible: Список задач playbook",
+        "title": "Ansible: List playbook tasks",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.runFromTask",
-        "title": "Ansible: Запустить с конкретной задачи",
+        "title": "Ansible: Run from task",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.detectSecrets",
-        "title": "Ansible: Найти секреты в проекте",
+        "title": "Ansible: Find secrets in project",
         "category": "Ansible Toolkit"
       },
       {
         "command": "ansibleToolkit.runQueue",
-        "title": "Ansible: Запустить плейбуки по очереди (queue)",
+        "title": "Ansible: Run playbooks in sequence (queue)",
         "category": "Ansible Toolkit"
       }
     ],

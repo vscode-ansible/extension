@@ -9,40 +9,40 @@ function tmpdir(): string {
 }
 
 describe('stringToStep', () => {
-  it('трактует .yml как плейбук', () => {
+  it('treats .yml as a playbook', () => {
     const s = stringToStep('deploy.yml', '/proj');
     expect(s?.isPlaybook).toBe(true);
     expect(s?.command).toBe('/proj/deploy.yml');
   });
 
-  it('оставляет команду как есть', () => {
+  it('keeps a command as-is', () => {
     const s = stringToStep('ansible-playbook deploy.yml', '/proj');
     expect(s?.isPlaybook).toBeUndefined();
     expect(s?.command).toBe('ansible-playbook deploy.yml');
   });
 
-  it('игнорирует пустую строку', () => {
+  it('ignores an empty string', () => {
     expect(stringToStep('   ', '/proj')).toBeNull();
   });
 });
 
 describe('parseQueueFile', () => {
-  it('разбирает commands с name+run', () => {
+  it('parses commands with name+run', () => {
     const dir = tmpdir();
     const file = path.join(dir, 'run-queue.yml');
     fs.writeFileSync(
       file,
-      'commands:\n  - name: Шаг один\n    run: ansible-playbook deps.yml\n  - name: Деплой\n    playbook: deploy.yml\n',
+      'commands:\n  - name: Step one\n    run: ansible-playbook deps.yml\n  - name: Deploy\n    playbook: deploy.yml\n',
     );
     const steps = parseQueueFile(file, dir);
     expect(steps).toHaveLength(2);
-    expect(steps[0]?.title).toBe('Шаг один');
+    expect(steps[0]?.title).toBe('Step one');
     expect(steps[0]?.command).toBe('ansible-playbook deps.yml');
     expect(steps[1]?.isPlaybook).toBe(true);
     expect(steps[1]?.command).toBe(path.join(dir, 'deploy.yml'));
   });
 
-  it('разбирает плоский список строк', () => {
+  it('parses a flat list of strings', () => {
     const dir = tmpdir();
     const file = path.join(dir, 'run-queue.yml');
     fs.writeFileSync(file, '- deps.yml\n- deploy.yml\n');
@@ -51,7 +51,7 @@ describe('parseQueueFile', () => {
     expect(steps.every((s) => s.isPlaybook)).toBe(true);
   });
 
-  it('возвращает [] для битого файла', () => {
+  it('returns [] for a broken file', () => {
     const dir = tmpdir();
     const file = path.join(dir, 'run-queue.yml');
     fs.writeFileSync(file, ': : : not yaml\n\tbad');
@@ -60,7 +60,7 @@ describe('parseQueueFile', () => {
 });
 
 describe('listPlaybookFiles', () => {
-  it('пропускает requirements и run-queue', () => {
+  it('skips requirements and run-queue', () => {
     const dir = tmpdir();
     fs.writeFileSync(path.join(dir, 'site.yml'), '');
     fs.writeFileSync(path.join(dir, 'deploy.yaml'), '');
@@ -72,7 +72,7 @@ describe('listPlaybookFiles', () => {
 });
 
 describe('findFirstExisting', () => {
-  it('возвращает первый существующий', () => {
+  it('returns the first existing path', () => {
     const dir = tmpdir();
     const a = path.join(dir, 'a.txt');
     fs.writeFileSync(a, '');

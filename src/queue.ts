@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import type { RunStep } from './runner';
 
-/** Находит первый существующий файл из списка. */
+/** Finds the first existing file from the list. */
 export function findFirstExisting(paths: string[]): string | null {
   for (const p of paths) {
     try {
@@ -16,13 +16,13 @@ export function findFirstExisting(paths: string[]): string | null {
 }
 
 /**
- * Разбирает `run-queue.yml` в список шагов. Поддерживает формы:
+ * Parses `run-queue.yml` into a list of steps. Supported forms:
  *   commands:
- *     - name: Установка зависимостей
+ *     - name: Install dependencies
  *       run: ansible-playbook deps.yml
- *     - name: Деплой
+ *     - name: Deploy
  *       playbook: deploy.yml
- *     - echo 'hello'            # строка-команда как единичный элемент списка
+ *     - echo 'hello'            # a bare command string as a single item
  */
 export function parseQueueFile(filePath: string, root: string): RunStep[] {
   let doc: unknown;
@@ -69,11 +69,11 @@ export function parseQueueFile(filePath: string, root: string): RunStep[] {
   return steps;
 }
 
-/** Превращает одну строку из очереди в шаг (по расширению определяется тип). */
+/** Converts a single queue line into a step (type determined by extension). */
 export function stringToStep(raw: string, root: string): RunStep | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  // Плейбук — только одиночное имя файла .yml без пробелов (иначе это команда).
+  // A playbook is a single .yml file name without spaces (otherwise it is a command).
   if (/^[^\s]+\.[yY][aA]?[mM][lL]$/.test(trimmed)) {
     const full = path.isAbsolute(trimmed) ? trimmed : path.join(root, trimmed);
     return { title: trimmed, command: full, isPlaybook: true };
@@ -81,7 +81,7 @@ export function stringToStep(raw: string, root: string): RunStep | null {
   return { title: trimmed, command: trimmed };
 }
 
-/** Перечисляет файлы .yml/.yaml в корне, кроме служебных. */
+/** Lists .yml/.yaml files in the root, except special ones. */
 export function listPlaybookFiles(root: string): string[] {
   try {
     return fs

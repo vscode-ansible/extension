@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { shapeRuntime, shapeInventory } from './pure';
 
 describe('shapeRuntime', () => {
-  it('строит граф play -> task -> result', () => {
+  it('builds a play -> task -> result graph', () => {
     const out = [
       'PLAY [Deploy app]',
       'TASK [Install packages]',
@@ -17,7 +17,7 @@ describe('shapeRuntime', () => {
     expect(g.nodes.some((n) => n.kind === 'result' && n.status === 'failed')).toBe(true);
   });
 
-  it('распознаёт unreachable', () => {
+  it('recognizes unreachable', () => {
     const out = 'PLAY [Play]\nfatal: [host1]: UNREACHABLE! => {}\n';
     const g = shapeRuntime(out);
     expect(g.nodes.some((n) => n.status === 'unreachable')).toBe(true);
@@ -25,7 +25,7 @@ describe('shapeRuntime', () => {
 });
 
 describe('shapeInventory', () => {
-  it('строит граф групп и хостов', () => {
+  it('builds a group and host graph', () => {
     const json = {
       all: { children: ['web'] },
       web: { hosts: ['web1', 'web2'] },

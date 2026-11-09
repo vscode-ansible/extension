@@ -19,7 +19,7 @@ export function nextId(now: number = Date.now()): string {
   return `${now}-${seq}`;
 }
 
-/** Нормализует вывод `--list-tasks` в упорядоченный список имён задач. */
+/** Normalizes `--list-tasks` output into an ordered task-name list. */
 export function parseTaskNames(listTasksOutput: string): string[] {
   const names: string[] = [];
   for (const raw of listTasksOutput.split('\n')) {
@@ -59,7 +59,7 @@ export function matchBreakpoint(breakpoint: Breakpoint, taskNames: string[]): Br
   return null;
 }
 
-/** Разбивает свободную команду на argv с учётом кавычек. */
+/** Splits a free-form command into argv, respecting quotes. */
 export function parseRunArgs(cmd: string): string[] {
   const args: string[] = [];
   let current = '';

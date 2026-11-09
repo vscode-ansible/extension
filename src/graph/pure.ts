@@ -66,7 +66,7 @@ function asDepList(deps: unknown): Array<string | { role?: string }> {
   return deps.map((d) => (typeof d === 'string' ? d : { role: (d as { role?: string }).role }));
 }
 
-/** Граф ролей и плейбуков: зависимости из roles/<имя>/meta/main.yml и import_playbook. */
+/** Roles and playbooks graph: dependencies from roles/<name>/meta/main.yml and import_playbook. */
 export function shapeRoles(projectRoot: string): GraphData {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
@@ -135,7 +135,7 @@ const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
 
 const TASK_STATUS_ORDER = ['unreachable', 'failed', 'changed', 'ok'] as const;
 
-/** Парсит вывод ansible-playbook в граф play → task → result. */
+/** Parses ansible-playbook output into a play → task → result graph. */
 export function shapeRuntime(text: string): GraphData {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
@@ -225,7 +225,7 @@ export interface InventoryListJson {
   [group: string]: { children?: string[]; hosts?: string[] } | unknown;
 }
 
-/** Граф группы → хосты из `ansible-inventory --list`. */
+/** Group → hosts graph from `ansible-inventory --list`. */
 export function shapeInventory(json: InventoryListJson): GraphData {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
