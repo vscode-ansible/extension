@@ -17,6 +17,8 @@ import {
 } from './graph/panel';
 import { ModulesPanel } from './completion/panel';
 import { AnsibleTreeProvider } from './tree/panel';
+import { FormPanel } from './form/panel';
+import { StepsPanel } from './steps/panel';
 
 const ANSIBLE_IDS = ['ansible', 'yaml'];
 
@@ -174,6 +176,22 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('ansibleToolkit.refreshExplorer', () => {
       treeProvider.refresh();
+    }),
+  );
+
+  // Playbook form builder.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.openForm', () => {
+      FormPanel.createOrShow(context.extensionUri);
+    }),
+  );
+
+  // Step-by-step runner for the active playbook.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.openSteps', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      await StepsPanel.createOrShow(editor.document.uri.fsPath);
     }),
   );
 }

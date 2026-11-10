@@ -2,7 +2,7 @@
   "name": "vscode-ansible-extension",
   "displayName": "VSCode Ansible Extension",
   "description": "Ansible support for VS Code: syntax highlighting, module autocomplete, playbook runner, linting, project graphs, secret detection, and debugging.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "vscode-ansible",
   "icon": "icon.png",
   "license": "MIT",
@@ -34,7 +34,9 @@
     "onCommand:ansibleToolkit.detectSecrets",
     "onCommand:ansibleToolkit.runQueue",
     "onCommand:ansibleToolkit.showModules",
-    "onCommand:ansibleToolkit.refreshExplorer"
+    "onCommand:ansibleToolkit.refreshExplorer",
+    "onCommand:ansibleToolkit.openForm",
+    "onCommand:ansibleToolkit.openSteps"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -323,6 +325,18 @@
         "title": "Ansible: Refresh project explorer",
         "category": "Ansible Toolkit",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "ansibleToolkit.openForm",
+        "title": "Ansible: Open playbook builder",
+        "category": "Ansible Toolkit",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "ansibleToolkit.openSteps",
+        "title": "Ansible: Run tasks step by step",
+        "category": "Ansible Toolkit",
+        "icon": "$(debug-step-over)"
       }
     ],
     "menus": {
@@ -341,6 +355,16 @@
           "command": "ansibleToolkit.showModules",
           "when": "view == ansibleToolkit.explorer",
           "group": "navigation"
+        },
+        {
+          "command": "ansibleToolkit.openForm",
+          "when": "view == ansibleToolkit.explorer",
+          "group": "navigation"
+        },
+        {
+          "command": "ansibleToolkit.openSteps",
+          "when": "view == ansibleToolkit.explorer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -357,9 +381,19 @@
           "group": "navigation@1"
         },
         {
-          "command": "ansibleToolkit.showModules",
+          "command": "ansibleToolkit.openSteps",
           "when": "editorLangId == ansible || editorLangId == yaml",
           "group": "navigation@2"
+        },
+        {
+          "command": "ansibleToolkit.openForm",
+          "when": "editorLangId == ansible || editorLangId == yaml",
+          "group": "navigation@3"
+        },
+        {
+          "command": "ansibleToolkit.showModules",
+          "when": "editorLangId == ansible || editorLangId == yaml",
+          "group": "navigation@4"
         }
       ],
       "editor/context": [
