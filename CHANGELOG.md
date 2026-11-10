@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-11-10
+
+### Fixed
+
+- Package runtime dependency `yaml` into the VSIX (fixes "Cannot find module yaml" on activation).
+- Change default run keybinding off `ctrl+shift+p` (was hijacking the command palette).
+
 ## [0.1.5] - 2026-11-10
 
 ### Changed
@@ -64,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sequential run queue (`run-queue.yml` or multi-select) in a notebook style.
 - File icons for playbooks, roles, and inventories.
 
+[0.1.6]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.6
 [0.1.5]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.5
 [0.1.4]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.4
 [0.1.3]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.3
