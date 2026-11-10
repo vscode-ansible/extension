@@ -2,7 +2,7 @@
   "name": "vscode-ansible-extension",
   "displayName": "VSCode Ansible Extension",
   "description": "Ansible support for VS Code: syntax highlighting, module autocomplete, playbook runner, linting, project graphs, secret detection, and debugging.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "vscode-ansible",
   "icon": "icon.png",
   "license": "MIT",
@@ -49,10 +49,42 @@
           ".yml",
           ".yaml"
         ],
+        "filenamePatterns": [
+          "**/playbooks/*.yml",
+          "**/playbooks/*.yaml",
+          "**/*playbook*.yml",
+          "**/*playbook*.yaml",
+          "**/roles/**/main.yml",
+          "**/roles/**/main.yaml",
+          "**/tasks/**/*.yml",
+          "**/tasks/**/*.yaml",
+          "**/handlers/**/*.yml",
+          "**/handlers/**/*.yaml",
+          "**/defaults/**/*.yml",
+          "**/defaults/**/*.yaml",
+          "**/vars/**/*.yml",
+          "**/vars/**/*.yaml",
+          "**/meta/*.yml",
+          "**/meta/*.yaml",
+          "**/host_vars/**/*.yml",
+          "**/host_vars/**/*.yaml",
+          "**/group_vars/**/*.yml",
+          "**/group_vars/**/*.yaml",
+          "**/molecule/*/molecule.yml",
+          "**/molecule/*/molecule.yaml"
+        ],
         "filenames": [
           "ansible.cfg",
-          "requirements.yml"
+          "site.yml",
+          "site.yaml",
+          "galaxy.yml",
+          "galaxy.yaml",
+          "execution-environment.yml",
+          "execution-environment.yaml",
+          "requirements.yml",
+          "requirements.yaml"
         ],
+        "firstLine": "# code: language=ansible",
         "configuration": "./language-configuration.json"
       }
     ],
@@ -131,6 +163,120 @@
         }
       }
     },
+    "configurationDefaults": {
+      "[ansible]": {
+        "editor.autoIndent": "advanced",
+        "editor.detectIndentation": true,
+        "editor.insertSpaces": true,
+        "editor.quickSuggestions": {
+          "comments": true,
+          "other": true,
+          "strings": true
+        },
+        "editor.tabSize": 2
+      }
+    },
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "execution-environment.yml",
+          "execution-environment.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/execution-environment.json"
+      },
+      {
+        "fileMatch": [
+          "meta/runtime.yml",
+          "meta/runtime.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/meta-runtime.json"
+      },
+      {
+        "fileMatch": [
+          ".ansible-navigator.yaml",
+          ".ansible-navigator.yml",
+          "ansible-navigator.yaml",
+          "ansible-navigator.yml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-navigator/main/src/ansible_navigator/data/ansible-navigator.json"
+      },
+      {
+        "fileMatch": [
+          "requirements.yml",
+          "requirements.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/requirements.json"
+      },
+      {
+        "fileMatch": [
+          "meta/main.yml",
+          "meta/main.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/meta.json"
+      },
+      {
+        "fileMatch": [
+          "tasks/**/*.yml",
+          "tasks/**/*.yaml",
+          "handlers/**/*.yml",
+          "handlers/**/*.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/tasks.json"
+      },
+      {
+        "fileMatch": [
+          "playbooks/vars/*.yml",
+          "playbooks/vars/*.yaml",
+          "vars/*.yml",
+          "vars/*.yaml",
+          "defaults/*.yml",
+          "defaults/*.yaml",
+          "host_vars/*.yml",
+          "host_vars/*.yaml",
+          "group_vars/*.yml",
+          "group_vars/*.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/vars.json"
+      },
+      {
+        "fileMatch": [
+          ".ansible-lint",
+          ".config/ansible-lint.yml",
+          ".config/ansible-lint.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible-lint-config.json"
+      },
+      {
+        "fileMatch": [
+          "molecule/*/molecule.yml",
+          "molecule/*/molecule.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible-community/molecule/main/src/molecule/data/molecule.json"
+      },
+      {
+        "fileMatch": [
+          "galaxy.yml",
+          "galaxy.yaml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/galaxy.json"
+      },
+      {
+        "fileMatch": [
+          "rulebooks/*.yaml",
+          "rulebooks/*.yml"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-rulebook/main/ansible_rulebook/schema/ruleset_schema.json"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          ".ansible-navigator.json",
+          "ansible-navigator.json"
+        ],
+        "url": "https://raw.githubusercontent.com/ansible/ansible-navigator/main/src/ansible_navigator/data/ansible-navigator.json"
+      }
+    ],
     "commands": [
       {
         "command": "ansibleToolkit.runPlaybook",
