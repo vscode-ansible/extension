@@ -25,6 +25,7 @@
   "activationEvents": [
     "onLanguage:yaml",
     "onLanguage:ansible",
+    "onView:ansibleToolkit.explorer",
     "onCommand:ansibleToolkit.runPlaybook",
     "onCommand:ansibleToolkit.showGraph",
     "onCommand:ansibleToolkit.runLint",
@@ -74,6 +75,24 @@
         "path": "./fileicons/ansible-icon-theme.json"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ansibleToolkit",
+          "title": "Ansible",
+          "icon": "icons/ansible-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "ansibleToolkit": [
+        {
+          "id": "ansibleToolkit.explorer",
+          "name": "Project",
+          "contextualTitle": "Ansible"
+        }
+      ]
+    },
     "configuration": {
       "title": "Ansible Toolkit",
       "properties": {
@@ -149,9 +168,39 @@
         "command": "ansibleToolkit.showModules",
         "title": "Ansible: Show modules reference",
         "category": "Ansible Toolkit"
+      },
+      {
+        "command": "ansibleToolkit.refreshExplorer",
+        "title": "Ansible: Refresh project explorer",
+        "category": "Ansible Toolkit",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "ansibleToolkit.refreshExplorer",
+          "when": "view == ansibleToolkit.explorer",
+          "group": "navigation"
+        },
+        {
+          "command": "ansibleToolkit.showGraph",
+          "when": "view == ansibleToolkit.explorer",
+          "group": "navigation"
+        },
+        {
+          "command": "ansibleToolkit.showModules",
+          "when": "view == ansibleToolkit.explorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ansibleToolkit.runPlaybook",
+          "when": "view == ansibleToolkit.explorer && viewItem == playbook",
+          "group": "inline"
+        }
+      ],
       "editor/title": [
         {
           "command": "ansibleToolkit.runPlaybook",

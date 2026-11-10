@@ -16,6 +16,7 @@ import {
   buildRolesGraph,
 } from './graph/panel';
 import { ModulesPanel } from './completion/panel';
+import { AnsibleTreeProvider } from './tree/panel';
 
 const ANSIBLE_IDS = ['ansible', 'yaml'];
 
@@ -159,6 +160,20 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('ansibleToolkit.showModules', () => {
       ModulesPanel.createOrShow(context.extensionUri);
+    }),
+  );
+
+  // Activity Bar tree view (always visible when a folder is open).
+  const treeProvider = new AnsibleTreeProvider();
+  context.subscriptions.push(
+    vscode.window.createTreeView('ansibleToolkit.explorer', {
+      treeDataProvider: treeProvider,
+      showCollapseAll: true,
+    }),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.refreshExplorer', () => {
+      treeProvider.refresh();
     }),
   );
 }
