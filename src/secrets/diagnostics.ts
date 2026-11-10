@@ -53,7 +53,7 @@ export class SecretCodeActionProvider implements vscode.CodeActionProvider {
       document.uri,
       new vscode.Range(range.start.line, 0, range.start.line, text.length),
       `${text.slice(0, range.start.character)}` +
-        text.replace(/(['"]).*?\1/, (m) => `{{ vault_${key} }}`),
+        text.replace(/(['"]).*?\1/, (_m) => `{{ vault_${key} }}`),
     );
     fixVault.diagnostics = [
       new vscode.Diagnostic(

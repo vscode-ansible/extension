@@ -1,5 +1,4 @@
 import { SECRET_PATTERNS } from './types';
-import type { SecretFinding } from './types';
 
 export interface ProjectFileRef {
   path: string;

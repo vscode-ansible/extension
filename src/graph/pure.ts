@@ -131,6 +131,8 @@ export function shapeRoles(projectRoot: string): GraphData {
 /* Runtime                                                            */
 /* ------------------------------------------------------------------ */
 
+// Matches ANSI escape sequences (e.g. color codes) for stripping from output.
+// eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
 
 const TASK_STATUS_ORDER = ['unreachable', 'failed', 'changed', 'ok'] as const;

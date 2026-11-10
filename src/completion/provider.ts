@@ -15,7 +15,6 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     const line = document.lineAt(position.line);
     const textBefore = line.text.slice(0, position.character);
     const indent = line.text.length - line.text.trimStart().length;
-    const isList = /^\s*-?\s*/.test(trimStart(textBefore)) || textBefore.trim() === '-';
 
     // Context: inside a task list, where the first key is the module name.
     const inTasksList = isUnderKey(document, position, /tasks|handlers|pre_tasks|post_tasks/);
@@ -43,7 +42,7 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
       const item = new vscode.CompletionItem(m.name, vscode.CompletionItemKind.Module);
       item.detail = m.doc;
       item.documentation = new vscode.MarkdownString(m.doc);
-      item.insertText = new vscode.SnippetString(`${m.name}:\n\t\$1`);
+      item.insertText = new vscode.SnippetString(`${m.name}:\n\t${1}`);
       item.filterText = m.name;
       return item;
     });
@@ -56,7 +55,7 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     return mod.options.map((opt) => {
       const item = new vscode.CompletionItem(opt, vscode.CompletionItemKind.Field);
       item.detail = `Option of module ${moduleName}`;
-      item.insertText = `${pad}${opt}: \$1`;
+      item.insertText = pad + opt + ': $1';
       return item;
     });
   }
@@ -86,10 +85,6 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     }
     return null;
   }
-}
-
-function trimStart(s: string): string {
-  return s.replace(/^\s+/, '');
 }
 
 function isUnderKey(

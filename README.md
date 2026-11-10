@@ -1,123 +1,120 @@
 # Ansible Toolkit
 
-A full-featured VS Code extension that turns the editor into a complete working
-environment for developing and debugging Ansible projects.
+Всё для работы с Ansible прямо в VS Code: подсветка синтаксиса, автодополнение,
+запуск плейбуков, линтер, граф проекта, поиск секретов и удобный справочник
+модулей.
 
-## Features
+## Что умеет
 
-- **Syntax highlighting** — YAML/Ansible and Jinja2 templates (`{{ }}`, `{% %}`,
-  filters, `ansible_*` special variables).
-- **Autocomplete** — module names (apt, yum, copy, template, systemd, docker and
-  40+ more), options for the current module, and playbook keywords.
-- **Run playbooks** — from the editor and the command palette into the integrated
-  terminal, with a default inventory.
-- **ansible-lint** — diagnostics on save and on demand, with messages parsed into
-  editor problems.
-- **Graphs** — an interactive graph of roles and playbooks (dependencies from
-  `roles/*/meta/main.yml`, `import_playbook`), plus an execution graph
-  (`ok`/`changed`/`failed`/`unreachable`).
-- **Secret detection** — scans for AWS access keys, private keys, and plain-text
-  passwords/tokens, with a "wrap in vault" Code Action.
-- **Debugging helpers** — task listing (`--list-tasks`) and running from a
-  specific task (`--start-at-task`).
-- **Sequential runs (colab-style)** — run playbooks/commands in order with a
-  progress log, like notebook cells. Steps come from a `run-queue.yml` file or a
-  multi-select of `.yml` files.
+- **Справочник модулей** — отдельное окно со списком всех модулей Ansible
+  (`apt`, `yaml`, `copy`, `template`, `docker_container` и ещё 40+) и их
+  параметрами. Удобно, когда не помнишь, как называется опция.
+- **Подсветка синтаксиса** — YAML/Ansible и Jinja2 (`{{ }}`, `{% %}`, фильтры,
+  спецпеременные `ansible_*`).
+- **Автодополнение** — имена модулей, их параметры и ключевые слова плейбука.
+- **Запуск плейбуков** — из редактора и палитры команд в терминал, с
+  дефолтным инвентарём.
+- **ansible-lint** — диагностика при сохранении и по вызову.
+- **Граф проекта** — интерактивный граф ролей и плейбуков (зависимости из
+  `roles/*/meta/main.yml`, `import_playbook`).
+- **Поиск секретов** — AWS-ключи, приватные ключи, пароли/токены в открытом
+  виде, с быстрым действием «обернуть в vault».
+- **Запуск по очереди** — последовательный запуск плейбуков/команд как в
+  ноутбуке, с прогрессом. Шаги берутся из `run-queue.yml` или выбором файлов.
 
-## Installation
+## Установка
 
-### From .vsix (prebuilt package)
-
-1. Build the package:
-   ```bash
-   cd vscode-extension
-   npm install
-   npm run compile
-   npx vsce package
-   ```
-2. In VS Code: `Extensions` → `...` → `Install from VSIX...` → select
-   `ansible-toolkit-0.1.0.vsix`.
-
-### From source (development)
+### Из .vsix (готовый пакет)
 
 ```bash
-cd vscode-extension
+cd extension
+npm install
+npm run compile
+npx vsce package
+```
+
+В VS Code: **Extensions** → **…** → **Install from VSIX…** → выбери
+`ansible-toolkit-0.1.0.vsix`.
+
+### Из исходников (для разработки)
+
+```bash
+cd extension
 npm install
 npm run compile
 ```
 
-Then open the `vscode-extension` folder in VS Code and press F5 (Run Extension).
-The launch configuration is already provided in `.vscode/launch.json`.
+Открой папку `extension` в VS Code и нажми **F5** (Run Extension). Конфигурация
+запуска уже в `.vscode/launch.json`.
 
-## Requirements
+## Требования
 
 - VS Code 1.85+
-- `ansible-playbook` and `ansible-inventory` on PATH (or set the path in
-  settings).
-- (optional) `ansible-lint` on PATH for the linter.
+- `ansible-playbook` и `ansible-inventory` в PATH (или укажи путь в настройках)
+- (необязательно) `ansible-lint` — для линтера
 
-## Settings
+## Настройки
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `ansibleToolkit.ansiblePlaybookPath` | `ansible-playbook` | Path to `ansible-playbook`. |
-| `ansibleToolkit.ansibleLintPath` | `ansible-lint` | Path to `ansible-lint`. |
-| `ansibleToolkit.lint.enabled` | `true` | Enable linter diagnostics. |
-| `ansibleToolkit.lint.onSave` | `true` | Lint after saving. |
-| `ansibleToolkit.secrets.enabled` | `true` | Enable secret scanning. |
-| `ansibleToolkit.defaultInventory` | `` | Default inventory. |
+| Ключ | По умолчанию | Описание |
+|------|--------------|-----------|
+| `ansibleToolkit.ansiblePlaybookPath` | `ansible-playbook` | Путь к `ansible-playbook`. |
+| `ansibleToolkit.ansibleLintPath` | `ansible-lint` | Путь к `ansible-lint`. |
+| `ansibleToolkit.lint.enabled` | `true` | Включить диагностику линтера. |
+| `ansibleToolkit.lint.onSave` | `true` | Линтить после сохранения. |
+| `ansibleToolkit.secrets.enabled` | `true` | Включить поиск секретов. |
+| `ansibleToolkit.defaultInventory` | `` | Инвентарь по умолчанию. |
 
-## Commands (Ctrl+Shift+P)
+## Команды (Ctrl+Shift+P)
 
-- `Ansible: Run playbook`
-- `Ansible: Run ansible-lint`
-- `Ansible: Show project graph`
-- `Ansible: List playbook tasks`
-- `Ansible: Run from task`
-- `Ansible: Find secrets in project`
-- `Ansible: Run playbooks in sequence (queue)`
+- `Ansible: Run playbook` — запустить текущий плейбук
+- `Ansible: Run ansible-lint` — запустить линтер
+- `Ansible: Show project graph` — показать граф проекта
+- `Ansible: Show modules reference` — открыть справочник модулей
+- `Ansible: List playbook tasks` — список задач плейбука
+- `Ansible: Run from task` — запуск с указанной задачи (`--start-at-task`)
+- `Ansible: Find secrets in project` — найти секреты в проекте
+- `Ansible: Run playbooks in sequence (queue)` — последовательный запуск
 
-## Sequential runs (run-queue.yml)
+## Последовательный запуск (run-queue.yml)
 
-To run playbooks one after another, create a `run-queue.yml` file in the project
-root:
+Чтобы запускать плейбуки один за другим, создай в корне проекта `run-queue.yml`:
 
 ```yaml
 commands:
-  - name: Install dependencies
+  - name: Установить зависимости
     run: ansible-playbook deps.yml
-  - name: Configure hosts
+  - name: Настроить хосты
     playbook: configure.yml
-  - name: Deploy
+  - name: Деплой
     playbook: deploy.yml
-  - ansible-playbook post-deploy.yml   # bare command strings also work
+  - ansible-playbook post-deploy.yml   # просто строка команды тоже работает
 ```
 
-Each step only starts after the previous one finishes. Progress and output are
-written to the "Ansible Run Queue" output channel. If the file is absent, the
-command offers a multi-select of playbooks instead.
+Каждый шаг запускается только после завершения предыдущего. Прогресс и вывод —
+в канале «Ansible Run Queue». Если файла нет, команда предложит выбрать
+плейбуки списком.
 
-## Project structure
+## Структура проекта
 
 ```
-vscode-extension/
-├── package.json              # extension manifest
+extension/
+├── package.json              # манифест расширения
 ├── language-configuration.json
 ├── tsconfig.json
-├── syntaxes/                 # TextMate grammars (Ansible + Jinja2)
-├── fileicons/                # file icons
+├── syntaxes/                 # TextMate-грамматики (Ansible + Jinja2)
+├── fileicons/                # иконки файлов
 └── src/
-    ├── extension.ts          # entry point, command registration
-    ├── runner.ts             # playbook/lint/list-tasks execution
-    ├── lint.ts               # ansible-lint output parser
-    ├── queue.ts              # sequential run queue (run-queue.yml)
-    ├── completion/           # autocomplete (dictionary + provider)
-    ├── secrets/              # secret detection
-    ├── graph/                # graphs (parsers + webview panel)
-    └── debug/                # debug helpers (list-tasks, start-at-task)
+    ├── extension.ts          # точка входа, регистрация команд
+    ├── runner.ts             # запуск playbook/lint/list-tasks
+    ├── lint.ts               # разбор вывода ansible-lint
+    ├── queue.ts              # очередь запуска (run-queue.yml)
+    ├── completion/           # автодополнение и справочник модулей
+    ├── secrets/              # поиск секретов
+    ├── graph/                # графы (парсеры + webview-панель)
+    └── debug/                # list-tasks, start-at-task
 ```
 
-## Tests
+## Тесты
 
 ```bash
 npm test

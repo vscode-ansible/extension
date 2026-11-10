@@ -15,6 +15,7 @@ import {
   GraphPanel,
   buildRolesGraph,
 } from './graph/panel';
+import { ModulesPanel } from './completion/panel';
 
 const ANSIBLE_IDS = ['ansible', 'yaml'];
 
@@ -152,6 +153,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('ansibleToolkit.runQueue', async () => {
       await runQueue();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.showModules', () => {
+      ModulesPanel.createOrShow(context.extensionUri);
     }),
   );
 }
