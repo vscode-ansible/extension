@@ -34,7 +34,7 @@ npx vsce package
 ```
 
 В VS Code: **Extensions** → **…** → **Install from VSIX…** → выбери
-`ansible-toolkit-0.1.0.vsix`.
+`vscode-ansible-extension-0.1.1.vsix`.
 
 ### Из исходников (для разработки)
 
