@@ -504,14 +504,13 @@ export class WizardPanel {
   }
 
   private async runVault(action: string, filePath: string): Promise<void> {
-    const res = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: 'ansible-vault ' + action },
-      async () => {
-        if (action === 'encrypt') return encryptFile(filePath);
-        if (action === 'decrypt') return decryptFile(filePath);
-        return viewFile(filePath);
-      },
-    );
+    const res =
+      action === 'encrypt'
+        ? await encryptFile(filePath)
+        : action === 'decrypt'
+          ? await decryptFile(filePath)
+          : await viewFile(filePath);
+
     if (res.code !== 0) {
       void vscode.window.showWarningMessage('ansible-vault failed: ' + res.output.slice(0, 300));
       return;

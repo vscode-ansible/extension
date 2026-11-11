@@ -66,6 +66,136 @@ function asDepList(deps: unknown): Array<string | { role?: string }> {
   return deps.map((d) => (typeof d === 'string' ? d : { role: (d as { role?: string }).role }));
 }
 
+/**
+ * Extracts the module name (and a human label) from a single task mapping.
+ * A task like `{ name, apt: { name: nginx } }` yields module `apt`.
+ */
+export function taskModule(task: Record<string, unknown>): string | null {
+  for (const key of Object.keys(task)) {
+    if (key === 'name' || key.startsWith('ansible.')) continue;
+    if (['when', 'notify', 'become', 'tags', 'register', 'loop', 'with_items', 'vars', 'block', 'import_tasks', 'include_tasks', 'import_role', 'include_role'].includes(key)) continue;
+    return key;
+  }
+  return null;
+}
+
+/** Read a YAML mapping file as a list of tasks (or empty). */
+function readTaskList(filePath: string): Array<Record<string, unknown>> {
+  try {
+    const doc = parseYaml(fs.readFileSync(filePath, 'utf8'));
+    if (Array.isArray(doc)) return doc as Array<Record<string, unknown>>;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Drill-down graph of a single playbook: playbook → play → role → task.
+ * Roles resolve to their tasks/handlers so the flow is visible end to end.
+ */
+export function shapePlaybookDetail(projectRoot: string, playbookName: string): GraphData {
+  const nodes: GraphNode[] = [];
+  const edges: GraphEdge[] = [];
+  const seen = new Set<string>();
+  const edgeIds = new Set<string>();
+
+  const addNode = (n: GraphNode) => {
+    if (seen.has(n.id)) return;
+    seen.add(n.id);
+    nodes.push(n);
+  };
+  const addEdge = (e: GraphEdge) => {
+    if (edgeIds.has(e.id)) return;
+    edgeIds.add(e.id);
+    edges.push(e);
+  };
+
+  const doc = readYamlFile(path.join(projectRoot, playbookName));
+  const entries = Array.isArray(doc) ? (doc as Record<string, unknown>[]) : [doc];
+
+  if (entries.length === 0 || entries.every((e) => Object.keys(e).length === 0)) {
+    return { kind: 'playbook', nodes: [{ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName }], edges: [] };
+  }
+
+  addNode({ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName });
+
+  entries.forEach((entry, pi) => {
+    const playName = typeof entry.name === 'string' ? entry.name : `play ${pi + 1}`;
+    const hosts = typeof entry.hosts === 'string' ? entry.hosts : 'all';
+    const playId = `play:${playbookName}:${pi}`;
+    addNode({ id: playId, kind: 'play', label: playName, subtitle: hosts });
+    addEdge({ id: `playbook:${playbookName}->${playId}`, source: `playbook:${playbookName}`, target: playId, label: 'play' });
+
+    // Roles assigned to this play.
+    const roles = Array.isArray(entry.roles) ? entry.roles as Array<string | { role?: string }> : [];
+    roles.forEach((ref) => {
+      const roleName = typeof ref === 'string' ? ref : ref.role;
+      if (!roleName) return;
+      appendRoleToPlay(projectRoot, playId, roleName, playbookName, nodes, edges, seen, edgeIds);
+    });
+
+    // Inline tasks (if the play has tasks directly).
+    const tasks = Array.isArray(entry.tasks) ? entry.tasks as Array<Record<string, unknown>> : [];
+    tasks.forEach((task, ti) => {
+      const label = typeof task.name === 'string' ? task.name : `task ${ti + 1}`;
+      const mod = taskModule(task);
+      const taskId = `task:${playbookName}:${pi}:${ti}`;
+      addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined });
+      addEdge({ id: `${playId}->${taskId}`, source: playId, target: taskId, label: mod ?? 'task' });
+    });
+  });
+
+  return { kind: 'playbook', nodes, edges };
+}
+
+function appendRoleToPlay(
+  projectRoot: string,
+  playId: string,
+  roleName: string,
+  playbookName: string,
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  seen: Set<string>,
+  edgeIds: Set<string>,
+): void {
+  const addNode = (n: GraphNode) => { if (seen.has(n.id)) return; seen.add(n.id); nodes.push(n); };
+  const addEdge = (e: GraphEdge) => { if (edgeIds.has(e.id)) return; edgeIds.add(e.id); edges.push(e); };
+
+  const roleId = `role:${roleName}`;
+  addNode({ id: roleId, kind: 'role', label: roleName });
+  addEdge({ id: `${playId}->${roleId}`, source: playId, target: roleId, label: 'role' });
+
+  const tasksPath = path.join(projectRoot, 'roles', roleName, 'tasks', 'main.yml');
+  const tasks = readTaskList(tasksPath);
+  tasks.forEach((task, ti) => {
+    const label = typeof task.name === 'string' ? task.name : `task ${ti + 1}`;
+    const mod = taskModule(task);
+    const taskId = `task:${roleName}:${ti}`;
+    addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined });
+    addEdge({ id: `${roleId}->${taskId}`, source: roleId, target: taskId, label: mod ?? 'task' });
+
+    // Handlers notified by this task.
+    const notify = task.notify;
+    const notified = Array.isArray(notify) ? notify.map(String) : typeof notify === 'string' ? [notify] : [];
+    for (const handlerName of notified) {
+      const handlerId = `handler:${roleName}:${handlerName}`;
+      addNode({ id: handlerId, kind: 'task', label: handlerName, subtitle: 'handler' });
+      addEdge({ id: `${taskId}->${handlerId}`, source: taskId, target: handlerId, label: 'notify' });
+    }
+  });
+
+  // Any handlers not referenced by a notify are also listed.
+  const handlersPath = path.join(projectRoot, 'roles', roleName, 'handlers', 'main.yml');
+  const handlers = readTaskList(handlersPath);
+  handlers.forEach((h, hi) => {
+    const label = typeof h.name === 'string' ? h.name : `handler ${hi + 1}`;
+    const id = `handler:${roleName}:${label}`;
+    addNode({ id, kind: 'task', label, subtitle: 'handler' });
+    addEdge({ id: `${roleId}->${id}`, source: roleId, target: id, label: 'handler' });
+  });
+}
+
 /** Roles and playbooks graph: dependencies from roles/<name>/meta/main.yml and import_playbook. */
 export function shapeRoles(projectRoot: string): GraphData {
   const nodes: GraphNode[] = [];

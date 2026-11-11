@@ -309,7 +309,8 @@
       {
         "command": "ansibleToolkit.showGraph",
         "title": "Ansible: Show project graph",
-        "category": "Ansible Toolkit"
+        "category": "Ansible Toolkit",
+        "icon": "$(type-hierarchy)"
       },
       {
         "command": "ansibleToolkit.listTasks",
@@ -334,7 +335,8 @@
       {
         "command": "ansibleToolkit.showModules",
         "title": "Ansible: Show modules reference",
-        "category": "Ansible Toolkit"
+        "category": "Ansible Toolkit",
+        "icon": "$(book)"
       },
       {
         "command": "ansibleToolkit.refreshExplorer",
@@ -435,14 +437,7 @@
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "ansibleToolkit.runPlaybook",
-        "key": "ctrl+shift+r",
-        "mac": "cmd+shift+r",
-        "when": "editorTextFocus && (editorLangId == ansible || editorLangId == yaml)"
-      }
-    ]
+    "keybindings": []
   },
   "scripts": {
     "compile": "tsc -p ./",

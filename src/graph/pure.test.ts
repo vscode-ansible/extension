@@ -1,5 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { shapeRuntime, shapeInventory } from './pure';
+import { shapeRuntime, shapeInventory, shapePlaybookDetail, taskModule } from './pure';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+function tmpdir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'graph-'));
+}
+
+describe('taskModule', () => {
+  it('extracts the module name from a task', () => {
+    expect(taskModule({ name: 'x', apt: { name: 'nginx' } })).toBe('apt');
+    expect(taskModule({ name: 'y', copy: {} })).toBe('copy');
+  });
+});
+
+describe('shapePlaybookDetail', () => {
+  it('builds playbook → play → role → task flow with notify edges', () => {
+    const dir = tmpdir();
+    fs.writeFileSync(path.join(dir, 'site.yml'), [
+      '---',
+      '- name: Configure',
+      '  hosts: webservers',
+      '  roles:',
+      '    - webserver',
+    ].join('\n'));
+    fs.mkdirSync(path.join(dir, 'roles', 'webserver', 'tasks'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'roles', 'webserver', 'tasks', 'main.yml'), [
+      '---',
+      '- name: Install nginx',
+      '  apt:',
+      '    name: nginx',
+      '  notify: restart nginx',
+    ].join('\n'));
+    fs.mkdirSync(path.join(dir, 'roles', 'webserver', 'handlers'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'roles', 'webserver', 'handlers', 'main.yml'), [
+      '---',
+      '- name: restart nginx',
+      '  service:',
+      '    name: nginx',
+      '    state: restarted',
+    ].join('\n'));
+
+    const g = shapePlaybookDetail(dir, 'site.yml');
+    expect(g.nodes.some((n) => n.kind === 'playbook' && n.label === 'site.yml')).toBe(true);
+    expect(g.nodes.some((n) => n.kind === 'play' && n.label === 'Configure')).toBe(true);
+    expect(g.nodes.some((n) => n.kind === 'role' && n.label === 'webserver')).toBe(true);
+    expect(g.nodes.some((n) => n.kind === 'task' && n.label === 'Install nginx')).toBe(true);
+    // notify edge task → handler
+    expect(g.edges.some((e) => e.label === 'notify')).toBe(true);
+  });
+});
 
 describe('shapeRuntime', () => {
   it('builds a play -> task -> result graph', () => {

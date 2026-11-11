@@ -13,7 +13,6 @@ import { findFirstExisting, parseQueueFile, listPlaybookFiles, isPlaybookFile } 
 import * as path from 'node:path';
 import {
   GraphPanel,
-  buildRolesGraph,
 } from './graph/panel';
 import { ModulesPanel } from './completion/panel';
 import { AnsibleTreeProvider } from './tree/panel';
@@ -115,18 +114,14 @@ export function activate(context: vscode.ExtensionContext): void {
         void vscode.window.showWarningMessage('No folder is open.');
         return;
       }
-      const graph = buildRolesGraph(root.uri.fsPath);
-      if (graph.nodes.length === 0) {
-        void vscode.window.showWarningMessage('No roles or playbooks found for the graph.');
-      }
-      // Clicking a playbook/role node opens the corresponding file.
-      GraphPanel.onSelectNode = (node) => {
-        if (node.kind === 'playbook' || node.kind === 'role') {
-          const filePath = path.join(root.uri.fsPath, node.label);
+      // Clicking a playbook node opens its file.
+      GraphPanel.onOpenNode = (node) => {
+        if (node.kind === 'playbook') {
+          const filePath = path.join(root.uri.fsPath, node.id.replace(/^playbook:/, ''));
           void vscode.window.showTextDocument(vscode.Uri.file(filePath));
         }
       };
-      GraphPanel.createOrShow(context.extensionUri, graph);
+      GraphPanel.createOrShow(context.extensionUri, root.uri.fsPath);
     }),
   );
 
