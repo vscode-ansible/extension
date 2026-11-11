@@ -5,16 +5,12 @@
   "patterns": [
     { "include": "#comment" },
     { "include": "#jinja" },
-    { "include": "#scalar" },
-    { "include": "#list-item" },
-    { "include": "#key" }
+    { "include": "#yaml" },
+    { "include": "#ansible" }
   ],
   "repository": {
     "comment": {
-      "match": "^\\s*(#).*$",
-      "captures": {
-        "1": { "name": "punctuation.definition.comment.ansible" }
-      },
+      "match": "^[ \\t]*#.*$",
       "name": "comment.line.number-sign.ansible"
     },
     "jinja": {
@@ -23,12 +19,20 @@
           "begin": "\\{\\{",
           "end": "\\}\\}",
           "name": "string.template.jinja.ansible",
-          "beginCaptures": { "0": { "name": "punctuation.definition.variable.ansible" } },
-          "endCaptures": { "0": { "name": "punctuation.definition.variable.ansible" } },
+          "beginCaptures": { "0": { "name": "punctuation.definition.variable.begin.ansible" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.variable.end.ansible" } },
           "patterns": [
             {
-              "match": "\\b(?:true|false|True|False|none|None)\\b",
+              "match": "\\|[a-zA-Z_][a-zA-Z0-9_]*",
+              "name": "support.function.filter.jinja"
+            },
+            {
+              "match": "\\b(?:true|false|True|False|none|None|yes|no)\\b",
               "name": "constant.language.boolean.ansible"
+            },
+            {
+              "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?=\\.|\\[|\\s*\\|)",
+              "name": "variable.other.jinja.ansible"
             }
           ]
         },
@@ -36,39 +40,73 @@
           "begin": "\\{%",
           "end": "%\\}",
           "name": "meta.statement.jinja.ansible",
-          "beginCaptures": { "0": { "name": "punctuation.definition.statement.ansible" } },
-          "endCaptures": { "0": { "name": "punctuation.definition.statement.ansible" } },
+          "beginCaptures": { "0": { "name": "punctuation.definition.statement.begin.ansible" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.statement.end.ansible" } },
           "patterns": [
             {
-              "match": "\\b(?:for|if|else|endif|endfor|set|include|import)\\b",
+              "match": "\\b(?:for|if|else|elif|endif|endfor|set|include|import|extends|block|macro|with|namespace|do|filter)\\b",
               "name": "keyword.control.jinja.ansible"
             }
           ]
         }
       ]
     },
-    "key": {
-      "match": "^\\s*([\\w-]+)(?=:\\s)",
-      "captures": {
-        "1": { "name": "entity.name.tag.ansible" }
-      }
-    },
-    "list-item": {
-      "match": "^\\s*(-\\s+)((?:name|hosts|tasks|roles|vars|include|import_playbook|become|gather_facts)\\b)",
-      "captures": {
-        "1": { "name": "punctuation.definition.list.begin.ansible" },
-        "2": { "name": "entity.name.function.ansible" }
-      }
-    },
-    "scalar": {
+    "yaml": {
       "patterns": [
         {
-          "match": "\\b(?:true|false|yes|no|on|off|none|null)\\b",
+          "match": "^[ \\t]*(?:-\\s+)?([a-zA-Z_][a-zA-Z0-9_-]*)(?=\\s*:)",
+          "captures": { "1": { "name": "entity.name.tag.ansible" } }
+        },
+        {
+          "match": ":[ \\t]+(?:\"([^\"]*)\"|'([^']*)')",
+          "captures": {
+            "1": { "name": "string.quoted.double.ansible" },
+            "2": { "name": "string.quoted.single.ansible" }
+          }
+        },
+        {
+          "match": ":[ \\t]+(?=[^\\s#])[^\\s#]*",
+          "captures": { "0": { "name": "string.unquoted.ansible" } }
+        },
+        {
+          "match": "\\b(?:true|false|yes|no|on|off)\\b",
           "name": "constant.language.boolean.ansible"
         },
         {
-          "match": "(?<=[-_]?)(?:ansible-)?(?:pip|apt|yum|dnf|shell|command|copy|template|file|service|systemd|user|group|lineinfile|blockinfile|replace|git|unarchive|get_url|uri|assert|fail|debug|set_fact|include_tasks|import_tasks|include_role|import_role|wait_for|pause|register|when|loop|with_items|become|hosts|tasks|handlers|vars|tags|ignore_errors|changed_when|notify)\\b",
-          "name": "support.function.ansible"
+          "match": "\\b(?:null|none|~)\\b",
+          "name": "constant.language.null.ansible"
+        },
+        {
+          "match": "\\b-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?\\b",
+          "name": "constant.numeric.ansible"
+        },
+        {
+          "match": "\\{\\{\\s*[a-zA-Z_][a-zA-Z0-9_.]*\\s*\\}\\}",
+          "name": "variable.other.ansible"
+        }
+      ]
+    },
+    "ansible": {
+      "patterns": [
+        {
+          "match": "^[ \\t]*-\\s+(?:ansible\\.builtin\\.)?(apt|yum|dnf|pip|shell|command|copy|template|file|service|systemd|user|group|lineinfile|blockinfile|replace|git|unarchive|get_url|uri|assert|fail|debug|set_fact|include_tasks|import_tasks|include_role|import_role|wait_for|pause|stat|find|cron|hostname|mount|firewalld|selinux|docker_container|docker_image)\\s*:",
+          "captures": { "1": { "name": "entity.name.function.ansible" } }
+        },
+        {
+          "match": "\\b(?:ansible\\.builtin\\.)?(apt|yum|dnf|pip|shell|command|copy|template|file|service|systemd|user|group|lineinfile|blockinfile|replace|git|unarchive|get_url|uri|assert|fail|debug|set_fact|include_tasks|import_tasks|include_role|import_role|wait_for|pause|stat|find|cron|hostname|mount|firewalld|selinux|docker_container|docker_image)\\b",
+          "name": "entity.name.function.ansible"
+        },
+        {
+          "match": "\\b(?:hosts|tasks|handlers|roles|vars|vars_files|become|become_user|become_method|gather_facts|connection|strategy|serial|tags|pre_tasks|post_tasks|ignore_errors|when|loop|with_items|notify|delegate_to|run_once|register|changed_when|failed_when|until|retries|delay|environment|collections|module_defaults)\\b",
+          "name": "keyword.other.ansible"
+        },
+        {
+          "match": "\\b(?:ansible_facts|ansible_host|ansible_user|ansible_connection|inventory_hostname|groups|hostvars|playbook_dir|role_path)\\b",
+          "name": "variable.language.ansible"
+        },
+        {
+          "match": "\\b(?:name|state|mode|owner|group|enabled|present|absent|restarted|started|stopped|latest)\\b",
+          "name": "constant.other.ansible"
         }
       ]
     }

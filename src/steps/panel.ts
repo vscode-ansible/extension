@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import { listTasks, runPlaybookCapturing } from '../runner';
+import { listTasks, runPlaybookLive } from '../runner';
 import { parseTaskTree, type PlayBlock, type TaskStep } from '../debug/pure';
+import { emitRuntime } from '../runtime/bus';
 
 interface ClientTask {
   i: number;
@@ -308,44 +309,38 @@ export class StepsPanel {
     void this.runFromTask(index, name);
   }
 
-  private async runFromTask(index: number, name: string): Promise<void> {
+  private async runFromTask(index: number, _name: string): Promise<void> {
     const send = (m: Record<string, unknown>) => void this.panel.webview.postMessage(m);
 
     let currentTaskIndex = index;
-    let currentState = 'running';
     let lastError = '';
 
-    // eslint-disable-next-line no-control-regex
-    const ansiRe = new RegExp('\u001b\\[[0-9;]*m', 'g');
+    const channel = vscode.window.createOutputChannel('Ansible Run');
+    channel.show(true);
+    channel.appendLine(`Running ${path.basename(this.playbookPath)} (check mode)…\n`);
 
-    await runPlaybookCapturing(
+    await runPlaybookLive(
       this.playbookPath,
-      ['--start-at-task', `"${name}"`],
-      (line) => {
-        const stripped = line.replace(ansiRe, '').trim();
-        // A new task header advances the current step (ansible prints
-        // "TASK [name]" before each task's output).
-        const taskMatch = stripped.match(/^TASK \[(.*?)\]/);
-        if (taskMatch) {
-          currentTaskIndex += 1;
-          currentState = 'running';
-        }
-        const lower = stripped.toLowerCase();
-        if (stripped.startsWith('fatal:')) {
-          currentState = 'failed';
-          lastError = stripped;
-        } else if (/^(ok|changed|skipping):/.test(lower)) {
-          currentState = lower.startsWith('skipping') ? 'skipped' : lower.startsWith('changed') ? 'changed' : 'ok';
-        }
-        send({
-          type: 'task-output',
-          index: currentTaskIndex - 1,
-          state: currentState,
-          output: stripped,
-        });
+      {
+        checkMode: true,
+        onLine: (e) => {
+          channel.appendLine((e.status ? e.status.toUpperCase() + ': ' : '') + e.raw);
+          if (e.kind === 'task') {
+            currentTaskIndex += 1;
+            send({ type: 'progress', index: currentTaskIndex - 1 });
+            return;
+          }
+          if (e.kind === 'result') {
+            const status = e.status ?? 'ok';
+            emitRuntime({ kind: 'result', label: e.label, status });
+            send({ type: 'task-output', index: currentTaskIndex - 1, state: status, output: e.raw });
+            if (status === 'failed') lastError = e.raw;
+          }
+        },
       },
     );
 
+    channel.appendLine('\nDone.');
     send({ type: 'done', index: currentTaskIndex - 1, error: lastError });
   }
 }

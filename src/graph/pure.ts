@@ -114,18 +114,19 @@ export function shapePlaybookDetail(projectRoot: string, playbookName: string): 
   const doc = readYamlFile(path.join(projectRoot, playbookName));
   const entries = Array.isArray(doc) ? (doc as Record<string, unknown>[]) : [doc];
 
+  const pbFile = path.join(projectRoot, playbookName);
   if (entries.length === 0 || entries.every((e) => Object.keys(e).length === 0)) {
-    return { kind: 'playbook', nodes: [{ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName }], edges: [] };
+    return { kind: 'playbook', nodes: [{ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName, data: { file: pbFile } }], edges: [] };
   }
 
-  addNode({ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName });
+  addNode({ id: `playbook:${playbookName}`, kind: 'playbook', label: playbookName, data: { file: pbFile } });
 
   entries.forEach((entry, pi) => {
     const playName = typeof entry.name === 'string' ? entry.name : `play ${pi + 1}`;
     const hosts = typeof entry.hosts === 'string' ? entry.hosts : 'all';
     const playId = `play:${playbookName}:${pi}`;
-    addNode({ id: playId, kind: 'play', label: playName, subtitle: hosts });
-    addEdge({ id: `playbook:${playbookName}->${playId}`, source: `playbook:${playbookName}`, target: playId, label: 'play' });
+    addNode({ id: playId, kind: 'play', label: playName, subtitle: hosts, data: { file: pbFile, line: 0 } });
+    addEdge({ id: `playbook:${playbookName}->${playId}`, source: `playbook:${playbookName}`, target: playId, label: 'contains' });
 
     // Roles assigned to this play.
     const roles = Array.isArray(entry.roles) ? entry.roles as Array<string | { role?: string }> : [];
@@ -141,7 +142,7 @@ export function shapePlaybookDetail(projectRoot: string, playbookName: string): 
       const label = typeof task.name === 'string' ? task.name : `task ${ti + 1}`;
       const mod = taskModule(task);
       const taskId = `task:${playbookName}:${pi}:${ti}`;
-      addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined });
+      addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined, data: { file: pbFile } });
       addEdge({ id: `${playId}->${taskId}`, source: playId, target: taskId, label: mod ?? 'task' });
     });
   });
@@ -163,16 +164,17 @@ function appendRoleToPlay(
   const addEdge = (e: GraphEdge) => { if (edgeIds.has(e.id)) return; edgeIds.add(e.id); edges.push(e); };
 
   const roleId = `role:${roleName}`;
-  addNode({ id: roleId, kind: 'role', label: roleName });
-  addEdge({ id: `${playId}->${roleId}`, source: playId, target: roleId, label: 'role' });
+  const roleFile = path.join(projectRoot, 'roles', roleName, 'tasks', 'main.yml');
+  addNode({ id: roleId, kind: 'role', label: roleName, data: { file: roleFile } });
+  addEdge({ id: `${playId}->${roleId}`, source: playId, target: roleId, label: 'uses' });
 
-  const tasksPath = path.join(projectRoot, 'roles', roleName, 'tasks', 'main.yml');
+  const tasksPath = roleFile;
   const tasks = readTaskList(tasksPath);
   tasks.forEach((task, ti) => {
     const label = typeof task.name === 'string' ? task.name : `task ${ti + 1}`;
     const mod = taskModule(task);
     const taskId = `task:${roleName}:${ti}`;
-    addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined });
+    addNode({ id: taskId, kind: 'task', label, subtitle: mod ?? undefined, data: { file: tasksPath } });
     addEdge({ id: `${roleId}->${taskId}`, source: roleId, target: taskId, label: mod ?? 'task' });
 
     // Handlers notified by this task.
@@ -180,8 +182,8 @@ function appendRoleToPlay(
     const notified = Array.isArray(notify) ? notify.map(String) : typeof notify === 'string' ? [notify] : [];
     for (const handlerName of notified) {
       const handlerId = `handler:${roleName}:${handlerName}`;
-      addNode({ id: handlerId, kind: 'task', label: handlerName, subtitle: 'handler' });
-      addEdge({ id: `${taskId}->${handlerId}`, source: taskId, target: handlerId, label: 'notify' });
+      addNode({ id: handlerId, kind: 'task', label: handlerName, subtitle: 'handler', data: { file: path.join(projectRoot, 'roles', roleName, 'handlers', 'main.yml') } });
+      addEdge({ id: `${taskId}->${handlerId}`, source: taskId, target: handlerId, label: 'notifies' });
     }
   });
 
@@ -191,8 +193,8 @@ function appendRoleToPlay(
   handlers.forEach((h, hi) => {
     const label = typeof h.name === 'string' ? h.name : `handler ${hi + 1}`;
     const id = `handler:${roleName}:${label}`;
-    addNode({ id, kind: 'task', label, subtitle: 'handler' });
-    addEdge({ id: `${roleId}->${id}`, source: roleId, target: id, label: 'handler' });
+    addNode({ id, kind: 'task', label, subtitle: 'handler', data: { file: handlersPath } });
+    addEdge({ id: `${roleId}->${id}`, source: roleId, target: id, label: 'handles' });
   });
 }
 
@@ -205,10 +207,10 @@ export function shapeRoles(projectRoot: string): GraphData {
   const roleNames = listDirNames(path.join(projectRoot, 'roles'));
   const playbooks = listPlaybooks(projectRoot);
 
-  const addNode = (id: string, kind: NodeKind, label: string) => {
+  const addNode = (id: string, kind: NodeKind, label: string, file?: string) => {
     if (seen.has(id)) return;
     seen.add(id);
-    nodes.push({ id, kind, label });
+    nodes.push({ id, kind, label, data: file ? { file } : undefined });
   };
   const addEdge = (source: string, target: string, label?: string) => {
     edges.push({ id: `${source}->${target}`, source, target, label });
@@ -216,30 +218,30 @@ export function shapeRoles(projectRoot: string): GraphData {
 
   for (const role of roleNames) {
     const roleId = `role:${role}`;
-    addNode(roleId, 'role', role);
+    addNode(roleId, 'role', role, path.join(projectRoot, 'roles', role, 'tasks', 'main.yml'));
     const metaPath = path.join(projectRoot, 'roles', role, 'meta', 'main.yml');
     const meta = readYamlFile(metaPath);
     for (const dep of asDepList(meta.dependencies)) {
       const depName = typeof dep === 'string' ? dep : dep.role;
       if (!depName) continue;
       const depId = `role:${depName}`;
-      addNode(depId, 'role', depName);
-      addEdge(roleId, depId);
+      addNode(depId, 'role', depName, path.join(projectRoot, 'roles', depName, 'tasks', 'main.yml'));
+      addEdge(roleId, depId, 'depends on');
     }
   }
 
   for (const playbook of playbooks) {
     if (playbook === 'requirements.yml') continue;
     const pbId = `playbook:${playbook}`;
-    addNode(pbId, 'playbook', playbook);
+    addNode(pbId, 'playbook', playbook, path.join(projectRoot, playbook));
     const doc = readYamlFile(path.join(projectRoot, playbook));
     const entries = Array.isArray(doc) ? (doc as Record<string, unknown>[]) : [doc];
     for (const entry of entries) {
       const imp = entry.import_playbook;
       if (typeof imp === 'string') {
         const target = `playbook:${imp}`;
-        addNode(target, 'playbook', imp);
-        addEdge(pbId, target, 'import');
+        addNode(target, 'playbook', imp, path.join(projectRoot, imp));
+        addEdge(pbId, target, 'imports');
       }
       const roles = entry.roles;
       if (Array.isArray(roles)) {
@@ -247,8 +249,8 @@ export function shapeRoles(projectRoot: string): GraphData {
           const roleName = typeof ref === 'string' ? ref : (ref as { role?: string }).role;
           if (!roleName) continue;
           const roleId = `role:${roleName}`;
-          addNode(roleId, 'role', roleName);
-          addEdge(pbId, roleId, 'role');
+          addNode(roleId, 'role', roleName, path.join(projectRoot, 'roles', roleName, 'tasks', 'main.yml'));
+          addEdge(pbId, roleId, 'uses');
         }
       }
     }

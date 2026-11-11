@@ -114,13 +114,6 @@ export function activate(context: vscode.ExtensionContext): void {
         void vscode.window.showWarningMessage('No folder is open.');
         return;
       }
-      // Clicking a playbook node opens its file.
-      GraphPanel.onOpenNode = (node) => {
-        if (node.kind === 'playbook') {
-          const filePath = path.join(root.uri.fsPath, node.id.replace(/^playbook:/, ''));
-          void vscode.window.showTextDocument(vscode.Uri.file(filePath));
-        }
-      };
       GraphPanel.createOrShow(context.extensionUri, root.uri.fsPath);
     }),
   );

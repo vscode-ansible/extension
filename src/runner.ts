@@ -139,6 +139,62 @@ export async function listTasks(playbookPath: string): Promise<string> {
   }
 }
 
+export interface LiveRunLine {
+  kind: 'play' | 'task' | 'result';
+  label: string;
+  status?: 'ok' | 'changed' | 'failed' | 'skipped' | 'unreachable';
+  raw: string;
+}
+
+/**
+ * Runs ansible-playbook capturing live output, emitting structured events per
+ * PLAY/TASK/result line. Uses `--check` so a run against unreachable hosts
+ * returns quickly instead of hanging on SSH timeouts, and is preferred for the
+ * visual runtime flow. Pass `checkMode: false` to actually apply changes.
+ */
+export async function runPlaybookLive(
+  playbookPath: string,
+  options: { checkMode?: boolean; onLine: (e: LiveRunLine) => void },
+): Promise<SpawnResult> {
+  const cfg = vscode.workspace.getConfiguration('ansibleToolkit');
+  const extra: string[] = [];
+  if (options.checkMode !== false) extra.push('--check');
+  const timeout = cfg.get<number>('runTimeoutSeconds') ?? 0;
+  if (timeout > 0) extra.push('--timeout', String(timeout));
+
+  let currentPlay: string | null = null;
+  let currentTask: string | null = null;
+  // eslint-disable-next-line no-control-regex
+  const ansi = /\x1b\[[0-9;]*m/g;
+
+  return runPlaybookCapturing(playbookPath, extra, (rawLine) => {
+    const line = rawLine.replace(ansi, '').trim();
+    if (!line) return;
+
+    const play = line.match(/^PLAY \[(.*?)\]/);
+    if (play) {
+      currentPlay = play[1] ?? '';
+      options.onLine({ kind: 'play', label: currentPlay, raw: line });
+      return;
+    }
+    const task = line.match(/^TASK \[(.*?)\]/);
+    if (task) {
+      currentTask = task[1] ?? '';
+      options.onLine({ kind: 'task', label: currentTask, raw: line });
+      return;
+    }
+    if (currentTask) {
+      const m = line.match(/^(ok|changed|skipping|failed|fatal|unreachable)/i);
+      if (m) {
+        const raw = m[1]!.toLowerCase();
+        const status = raw === 'skipping' ? 'skipped' : raw === 'fatal' ? 'failed' : raw === 'unreachable' ? 'unreachable' : raw === 'changed' ? 'changed' : 'ok';
+        options.onLine({ kind: 'result', label: currentTask, status, raw: line });
+      }
+    }
+    void currentPlay;
+  });
+}
+
 /** A single command in a sequential run queue (colab-style). */
 export interface RunStep {
   /** Human-readable step title. */

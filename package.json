@@ -178,6 +178,11 @@
           "type": "string",
           "default": "ansible-vault",
           "description": "Path to the ansible-vault executable (or a name on PATH)."
+        },
+        "ansibleToolkit.runTimeoutSeconds": {
+          "type": "number",
+          "default": 10,
+          "description": "Per-task timeout in seconds passed as --timeout. Prevents runs from hanging on unreachable hosts."
         }
       }
     },

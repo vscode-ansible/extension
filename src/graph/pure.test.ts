@@ -48,7 +48,7 @@ describe('shapePlaybookDetail', () => {
     expect(g.nodes.some((n) => n.kind === 'role' && n.label === 'webserver')).toBe(true);
     expect(g.nodes.some((n) => n.kind === 'task' && n.label === 'Install nginx')).toBe(true);
     // notify edge task → handler
-    expect(g.edges.some((e) => e.label === 'notify')).toBe(true);
+    expect(g.edges.some((e) => e.label === 'notifies')).toBe(true);
   });
 });
 

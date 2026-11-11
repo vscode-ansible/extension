@@ -113,7 +113,7 @@ ${themeCss()}
   .actions button:hover { background:var(--tk-btn-hover); }
   .actions button.secondary { background:var(--tk-btn-secondary-bg); color:var(--tk-btn-secondary-fg); }
   .warning { color:var(--tk-error); font-size:11px; margin-top:3px; }
-  textarea { width:100%; background:var(--tk-input-bg); border:1px solid var(--tk-input-border); color:var(--tk-input-fg); border-radius:2px; font-family:var(--tk-mono); font-size:11px; min-height:72px; padding:5px; }
+  textarea { width:100%; box-sizing:border-box; background:var(--tk-input-bg); border:1px solid var(--tk-input-border); color:var(--tk-input-fg); border-radius:2px; font-family:var(--tk-mono); font-size:11px; min-height:72px; max-height:60vh; padding:5px; resize:vertical; overflow:auto; display:block; }
   .filebox { margin-bottom:12px; padding:8px; border:1px solid var(--tk-border); border-radius:2px; }
   .filebox .name { font-size:12px; margin-bottom:6px; }
 </style>
@@ -330,6 +330,12 @@ ${themeCss()}
           const sv = document.createElement('button'); sv.textContent = L.save;
           sv.addEventListener('click', () => vscode.postMessage({ type: 'vars:save', path: f.fsPath, content: ta.value }));
           row.appendChild(sv); box.appendChild(row);
+          // Debounced autosave on editing.
+          let timer = null;
+          ta.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => vscode.postMessage({ type: 'vars:save', path: f.fsPath, content: ta.value, silent: true }), 800);
+          });
         }
         el.appendChild(box);
       });
@@ -414,7 +420,7 @@ export class WizardPanel {
         break;
       }
       case 'vars:save': {
-        this.handleVarsSave(String(msg.path ?? ''), String(msg.content ?? ''));
+        this.handleVarsSave(String(msg.path ?? ''), String(msg.content ?? ''), msg.silent === true);
         break;
       }
       case 'secrets:list': {
@@ -482,17 +488,17 @@ export class WizardPanel {
     void this.panel.webview.postMessage({ type: 'vars:list', files });
   }
 
-  private handleVarsSave(filePath: string, content: string): void {
+  private handleVarsSave(filePath: string, content: string, silent = false): void {
     try {
       const doc = parse(content);
       if (doc && typeof doc === 'object' && !Array.isArray(doc)) {
         writeVars(filePath, doc as Record<string, unknown>);
-        void vscode.window.showInformationMessage(t('vars.title') + ': ' + t('common.done').toLowerCase());
-      } else {
+        if (!silent) void vscode.window.showInformationMessage(t('vars.title') + ': ' + t('common.done').toLowerCase());
+      } else if (!silent) {
         void vscode.window.showWarningMessage('Not a valid YAML mapping.');
       }
     } catch (err) {
-      void vscode.window.showWarningMessage(String(err));
+      if (!silent) void vscode.window.showWarningMessage(String(err));
     }
   }
 
@@ -512,7 +518,15 @@ export class WizardPanel {
           : await viewFile(filePath);
 
     if (res.code !== 0) {
-      void vscode.window.showWarningMessage('ansible-vault failed: ' + res.output.slice(0, 300));
+      const ansi = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
+      const out = res.output.replace(ansi, '');
+      const msg =
+        /decryption failed|incorrect vault password|wrong vault password/i.test(out)
+          ? 'Wrong vault password. Try again.'
+          : /no vault secrets|could not find vault/i.test(out)
+            ? 'No vault password source found. Create a vault first.'
+            : 'ansible-vault error: ' + out.trim().split('\n').pop()?.slice(0, 160);
+      void vscode.window.showErrorMessage(msg);
       return;
     }
     if (action === 'view') {
