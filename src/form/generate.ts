@@ -1,4 +1,5 @@
-import { ANSIBLE_MODULES, moduleByName } from '../completion/modules';
+import { ANSIBLE_MODULES, moduleByName, moduleOptions } from '../completion/modules';
+import type { WizardState } from '../wizard/state';
 
 export interface TaskFormValue {
   name: string;
@@ -119,5 +120,83 @@ export function listModuleNames(): string[] {
 }
 
 export function listModuleOptions(name: string): string[] {
-  return moduleByName(name)?.options ?? [];
+  const m = moduleByName(name);
+  return m ? moduleOptions(m) : [];
+}
+
+/* ------------------------------------------------------------------ */
+/* Wizard generation                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface WizardOutput {
+  /** Role scaffolding files (only when intent is 'role'). */
+  files: Array<{ path: string; content: string }>;
+  /** Playbook/task YAML to insert into the editor (empty for role intent). */
+  yaml: string;
+}
+
+/**
+ * Turns a wizard state into concrete artefacts. Reuses the existing
+ * single-task/playbook/role generators so quoting and structure stay
+ * consistent with the legacy form.
+ */
+export function generateFromWizard(state: WizardState): WizardOutput {
+  if (state.intent === 'role') {
+    const files = generateRoleFiles({
+      name: state.role?.name ?? '',
+      includeTemplates: state.role?.includeTemplates ?? true,
+      includeMeta: state.role?.includeMeta ?? true,
+    });
+    return { files, yaml: '' };
+  }
+
+  const play = state.play ?? { name: '', hosts: 'all', become: false, gatherFacts: true, roles: [] };
+
+  if (state.intent === 'playbook') {
+    const yaml = generatePlaybookYaml({
+      name: play.name,
+      hosts: play.hosts,
+      become: play.become,
+      gatherFacts: play.gatherFacts,
+      vault: false,
+      roles: play.roles,
+    });
+    // Replace the placeholder example task with the wizard's tasks if any.
+    const taskBlocks = state.tasks
+      .filter((t) => t.module.trim())
+      .map((t) =>
+        generateTaskYaml({
+          name: t.name,
+          module: t.module,
+          options: t.options.filter((o) => o.key.trim()),
+          indent: 4,
+        }),
+      );
+    if (taskBlocks.length > 0) {
+      const lines = yaml.split('\n');
+      const hostIdx = lines.findIndex((l) => /^\s+hosts:/.test(l));
+      const anchor = lines.findIndex((l, i) => i > hostIdx && /^\s+tasks:/.test(l));
+      if (anchor >= 0) {
+        const head = lines.slice(0, anchor + 1);
+        const tail = lines.slice(anchor + 1);
+        const body = tail.filter((l) => l.trim() !== '' && !/^\s+- name: Example task/.test(l) && !/^\s+debug:/.test(l) && !/^\s+msg:/.test(l));
+        lines.length = 0;
+        lines.push(...head, ...taskBlocks);
+        if (body.length) lines.push(...body);
+      }
+      return { files: [], yaml: lines.join('\n') + '\n' };
+    }
+    return { files: [], yaml };
+  }
+
+  // Single task intent.
+  const task = state.tasks[0];
+  if (!task || !task.module.trim()) return { files: [], yaml: '' };
+  const yaml = generateTaskYaml({
+    name: task.name,
+    module: task.module,
+    options: task.options.filter((o) => o.key.trim()),
+    indent: 0,
+  });
+  return { files: [], yaml: yaml + '\n' };
 }

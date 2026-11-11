@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ANSIBLE_MODULES, ANSIBLE_KEYWORDS } from './modules';
+import { themeCss } from '../theme';
 
 function renderModulesHtml(): string {
   const modules = ANSIBLE_MODULES;
@@ -14,21 +15,22 @@ function renderModulesHtml(): string {
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
 <style>
+${themeCss()}
   :root {
-    --bg: #1e1e1e;
-    --panel: #252526;
-    --border: #ffffff22;
-    --text: #e0e0e0;
-    --muted: #9e9e9e;
-    --accent: #ff6d00;
-    --accent-soft: #ff6d0033;
+    --bg: var(--tk-bg);
+    --panel: var(--tk-bg);
+    --border: var(--tk-border);
+    --text: var(--tk-fg);
+    --muted: var(--tk-muted);
+    --accent: var(--tk-accent);
+    --accent-soft: var(--vscode-list-inactiveSelectionBackground, var(--tk-input-bg));
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, Segoe UI, sans-serif;
+    font-family: var(--tk-font);
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -48,14 +50,14 @@ function renderModulesHtml(): string {
   #search {
     width: 100%;
     padding: 6px 10px;
-    background: #3c3c3c;
+    background: var(--tk-input-bg);
     border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text);
+    border-radius: 2px;
+    color: var(--tk-input-fg);
     font-size: 12px;
     outline: none;
   }
-  #search:focus { border-color: var(--accent); }
+  #search:focus { border-color: var(--tk-focus); }
   main {
     flex: 1;
     display: flex;
@@ -71,7 +73,7 @@ function renderModulesHtml(): string {
     padding: 7px 12px;
     cursor: pointer;
     font-size: 12px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-family: var(--tk-mono);
     color: var(--text);
   }
   #list .item:hover { background: var(--accent-soft); }
@@ -85,7 +87,7 @@ function renderModulesHtml(): string {
   #detail h2 {
     margin: 0 0 4px;
     font-size: 18px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-family: var(--tk-mono);
     color: var(--accent);
   }
   #detail .doc { color: var(--text); font-size: 13px; margin: 4px 0 16px; }
@@ -98,14 +100,15 @@ function renderModulesHtml(): string {
   }
   #detail ul { list-style: none; padding: 0; margin: 0; }
   #detail li {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-family: var(--tk-mono);
     font-size: 12px;
     padding: 5px 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 2px;
     margin-bottom: 6px;
     background: var(--panel);
   }
+  #detail li.req { border-left: 2px solid var(--tk-accent); }
   .empty { color: var(--muted); padding: 20px; font-size: 12px; }
 </style>
 </head>
@@ -173,13 +176,17 @@ function renderModulesHtml(): string {
       detailEl.innerHTML = '<div class="empty">Select a module to view its options.</div>';
       return;
     }
-    const options = entry.options && entry.options.length
-      ? '<ul>' + entry.options.map((o) => '<li>' + o + '</li>').join('') + '</ul>'
-      : '<div class="empty">No options catalogued.</div>';
+    const required = entry.required && entry.required.length
+      ? '<h3>Required</h3><ul>' + entry.required.map((o) => '<li class="req">' + o + '</li>').join('') + '</ul>'
+      : '';
+    const optional = entry.optional && entry.optional.length
+      ? '<h3>Optional</h3><ul>' + entry.optional.map((o) => '<li>' + o + '</li>').join('') + '</ul>'
+      : '';
+    const hasOptions = (entry.required?.length || 0) + (entry.optional?.length || 0) > 0;
     detailEl.innerHTML =
       '<h2>' + entry.name + '</h2>' +
       '<div class="doc">' + (entry.doc || '') + '</div>' +
-      '<h3>Options</h3>' + options;
+      (hasOptions ? required + optional : '<div class="empty">No options catalogued.</div>');
   }
 
   searchEl.addEventListener('input', () => renderList(searchEl.value));

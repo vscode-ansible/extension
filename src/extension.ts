@@ -9,7 +9,7 @@ import {
 } from './runner';
 import type { RunStep } from './runner';
 import { parseTaskNames } from './debug/pure';
-import { findFirstExisting, parseQueueFile, listPlaybookFiles } from './queue';
+import { findFirstExisting, parseQueueFile, listPlaybookFiles, isPlaybookFile } from './queue';
 import * as path from 'node:path';
 import {
   GraphPanel,
@@ -17,12 +17,29 @@ import {
 } from './graph/panel';
 import { ModulesPanel } from './completion/panel';
 import { AnsibleTreeProvider } from './tree/panel';
-import { FormPanel } from './form/panel';
 import { StepsPanel } from './steps/panel';
+import { WizardPanel } from './wizard/panel';
+import { setLanguage } from './i18n';
 
 const ANSIBLE_IDS = ['ansible', 'yaml'];
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Initialize the i18n language from settings (auto → env language).
+  const langCfg = vscode.workspace.getConfiguration('ansibleToolkit').get<string>('language') ?? 'auto';
+  setLanguage(langCfg === 'auto' ? vscode.env.language : langCfg);
+
+  // Re-apply language when the user changes the setting. Webview colors follow
+  // the theme live (CSS variables), so only text needs a rebuild.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('ansibleToolkit.language')) {
+        const cfg = vscode.workspace.getConfiguration('ansibleToolkit').get<string>('language') ?? 'auto';
+        setLanguage(cfg === 'auto' ? vscode.env.language : cfg);
+        WizardPanel.rebuild();
+      }
+    }),
+  );
+
   const token = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (editor) void lintActiveDocument(editor.document);
   });
@@ -71,7 +88,14 @@ export function activate(context: vscode.ExtensionContext): void {
         void vscode.window.showInformationMessage('Open a playbook before running.');
         return;
       }
-      runPlaybookInTerminal(editor.document.uri.fsPath);
+      const filePath = editor.document.uri.fsPath;
+      if (!isPlaybookFile(filePath)) {
+        void vscode.window.showWarningMessage(
+          `${path.basename(filePath)} is not a playbook (it has no list of plays with \`hosts\`).`,
+        );
+        return;
+      }
+      runPlaybookInTerminal(filePath);
     }),
   );
 
@@ -95,6 +119,13 @@ export function activate(context: vscode.ExtensionContext): void {
       if (graph.nodes.length === 0) {
         void vscode.window.showWarningMessage('No roles or playbooks found for the graph.');
       }
+      // Clicking a playbook/role node opens the corresponding file.
+      GraphPanel.onSelectNode = (node) => {
+        if (node.kind === 'playbook' || node.kind === 'role') {
+          const filePath = path.join(root.uri.fsPath, node.label);
+          void vscode.window.showTextDocument(vscode.Uri.file(filePath));
+        }
+      };
       GraphPanel.createOrShow(context.extensionUri, graph);
     }),
   );
@@ -103,6 +134,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ansibleToolkit.listTasks', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
+      if (!isPlaybookFile(editor.document.uri.fsPath)) {
+        void vscode.window.showWarningMessage(
+          `${path.basename(editor.document.uri.fsPath)} is not a playbook.`,
+        );
+        return;
+      }
       const output = await listTasks(editor.document.uri.fsPath);
       const names = parseTaskNames(output);
       if (names.length === 0) {
@@ -122,6 +159,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ansibleToolkit.runFromTask', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
+      if (!isPlaybookFile(editor.document.uri.fsPath)) {
+        void vscode.window.showWarningMessage(
+          `${path.basename(editor.document.uri.fsPath)} is not a playbook.`,
+        );
+        return;
+      }
       const output = await listTasks(editor.document.uri.fsPath);
       const names = parseTaskNames(output);
       if (names.length === 0) {
@@ -179,10 +222,15 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // Playbook form builder.
+  // Playbook constructor (wizard). The legacy openForm command now opens it too.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ansibleToolkit.openWizard', () => {
+      WizardPanel.createOrShow(context.extensionUri);
+    }),
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('ansibleToolkit.openForm', () => {
-      FormPanel.createOrShow(context.extensionUri);
+      WizardPanel.createOrShow(context.extensionUri);
     }),
   );
 
@@ -191,6 +239,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ansibleToolkit.openSteps', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
+      if (!isPlaybookFile(editor.document.uri.fsPath)) {
+        void vscode.window.showWarningMessage(
+          `${path.basename(editor.document.uri.fsPath)} is not a playbook — open a playbook first.`,
+        );
+        return;
+      }
       await StepsPanel.createOrShow(editor.document.uri.fsPath);
     }),
   );

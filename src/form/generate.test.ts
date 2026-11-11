@@ -4,7 +4,9 @@ import {
   generatePlaybookYaml,
   generateRoleFiles,
   listModuleOptions,
+  generateFromWizard,
 } from './generate';
+import { initialWizardState, applyAnswer } from '../wizard/state';
 
 describe('generateTaskYaml', () => {
   it('renders a task with module and options', () => {
@@ -86,5 +88,28 @@ describe('listModuleOptions', () => {
   });
   it('returns empty for unknown module', () => {
     expect(listModuleOptions('nope')).toEqual([]);
+  });
+});
+
+describe('generateFromWizard', () => {
+  it('generates a single-task YAML block', () => {
+    let s = applyAnswer(initialWizardState(), { kind: 'intent', intent: 'task' });
+    s = applyAnswer(s, { kind: 'task-name', name: 'Install nginx' });
+    s = applyAnswer(s, { kind: 'task-module', module: 'apt' });
+    s = applyAnswer(s, { kind: 'task-option-add' });
+    s = applyAnswer(s, { kind: 'task-option', index: 0, field: 'key', value: 'name' });
+    s = applyAnswer(s, { kind: 'task-option', index: 0, field: 'value', value: 'nginx' });
+    const yaml = generateFromWizard(s).yaml;
+    expect(yaml).toContain('- name: Install nginx');
+    expect(yaml).toContain('  apt:');
+    expect(yaml).toContain('    name: nginx');
+  });
+
+  it('scaffolds role files for role intent', () => {
+    let s = applyAnswer(initialWizardState(), { kind: 'intent', intent: 'role' });
+    s = applyAnswer(s, { kind: 'role', patch: { name: 'my_role' } });
+    const out = generateFromWizard(s);
+    expect(out.yaml).toBe('');
+    expect(out.files.map((f) => f.path)).toContain('roles/my_role/tasks/main.yml');
   });
 });

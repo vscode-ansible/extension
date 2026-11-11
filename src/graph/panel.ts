@@ -2,15 +2,6 @@ import * as vscode from 'vscode';
 import { shapeRoles } from './pure';
 import type { GraphData } from './pure';
 
-const STATUS_COLORS: Record<string, string> = {
-  ok: '#4caf50',
-  changed: '#ffc107',
-  failed: '#f44336',
-  unreachable: '#9e9e9e',
-  skipped: '#2196f3',
-  ignored: '#9c27b0',
-};
-
 function renderGraphHtml(graph: GraphData): string {
   const dataJson = JSON.stringify(graph).replace(/</g, '\\u003c');
   return `<!DOCTYPE html>
@@ -19,38 +10,40 @@ function renderGraphHtml(graph: GraphData): string {
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
 <style>
-  body { margin: 0; background: #1e1e1e; font-family: -apple-system, Segoe UI, sans-serif; overflow: hidden; }
+  body { margin: 0; background: var(--vscode-editor-background); font-family: var(--vscode-font-family, -apple-system, Segoe UI, sans-serif); overflow: hidden; }
   svg { width: 100vw; height: 100vh; }
-  .node circle { stroke: #ffffff22; stroke-width: 1.5; }
-  .node text { fill: #e0e0e0; font-size: 12px; pointer-events: none; }
-  .edge { stroke: #ffffff44; stroke-opacity: 0.4; fill: none; }
-  .edge.label { font-size: 10px; fill: #9e9e9e; }
-  .legend { position: fixed; top: 12px; left: 12px; background: #252526cc; border: 1px solid #ffffff22; padding: 8px 12px; border-radius: 6px; color: #ccc; font-size: 12px; }
-  .legend b { color: #fff; }
+  .node circle { stroke: var(--vscode-panel-border, transparent); stroke-width: 1.5; }
+  .node text { fill: var(--vscode-foreground); font-size: 12px; pointer-events: none; }
+  .edge { stroke: var(--vscode-foreground); stroke-opacity: 0.35; fill: none; }
+  .edge.label { font-size: 10px; fill: var(--vscode-descriptionForeground); }
+  .legend { position: fixed; top: 12px; left: 12px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); padding: 8px 12px; border-radius: 6px; color: var(--vscode-descriptionForeground); font-size: 12px; }
+  .legend b { color: var(--vscode-foreground); }
 </style>
 </head>
 <body>
 <div class="legend"><b>${graph.kind}</b> · nodes ${graph.nodes.length} · edges ${graph.edges.length}</div>
 <svg id="svg"></svg>
 <script>
+  const vscode = acquireVsCodeApi();
   const data = JSON.parse(${JSON.stringify(dataJson)});
   const width = window.innerWidth;
   const height = window.innerHeight;
 
-  const nodes = data.nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label, color: colorOf(n) }));
+  const KINDS = {
+    playbook: 'var(--vscode-charts-blue)', role: 'var(--vscode-charts-orange)',
+    group: 'var(--vscode-charts-green)', host: 'var(--vscode-charts-purple)',
+    task: 'var(--vscode-charts-yellow)', play: 'var(--vscode-charts-red)',
+  };
+  const STATUS = {
+    ok: 'var(--vscode-charts-green)', changed: 'var(--vscode-charts-yellow)',
+    failed: 'var(--vscode-errorForeground)', unreachable: 'var(--vscode-descriptionForeground)',
+    skipped: 'var(--vscode-charts-blue)', ignored: 'var(--vscode-charts-purple)',
+  };
   function colorOf(n) {
-    const map = ${JSON.stringify(STATUS_COLORS)};
-    if (n.status) return map[n.status] || '#607d8b';
-    switch (n.kind) {
-      case 'playbook': return '#00bcd4';
-      case 'role': return '#ff6d00';
-      case 'group': return '#4caf50';
-      case 'host': return '#2196f3';
-      case 'task': return '#9c27b0';
-      case 'play': return '#3f51b5';
-      default: return '#607d8b';
-    }
+    if (n.status) return STATUS[n.status] || 'var(--vscode-foreground)';
+    return KINDS[n.kind] || 'var(--vscode-foreground)';
   }
+  const nodes = data.nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label, color: colorOf(n) }));
   const links = data.edges.map(e => ({ source: e.source, target: e.target, label: e.label }));
 
   const svg = d3.select('#svg');
@@ -74,6 +67,10 @@ function renderGraphHtml(graph: GraphData): string {
   node.append('text').attr('x', 14).attr('y', 4).text(d => d.label);
 
   node.append('title').text(d => d.label);
+
+  node.on('click', (event, d) => {
+    vscode.postMessage({ type: 'selectNode', id: d.id, label: d.label, kind: d.kind });
+  });
 
   simulation.on('tick', () => {
     edge.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
@@ -103,7 +100,19 @@ export class GraphPanel {
     panel.onDidDispose(() => {
       GraphPanel.current = undefined;
     });
+    panel.webview.onDidReceiveMessage((msg) => {
+      if (msg.type === 'selectNode' && typeof GraphPanel.onSelectNode === 'function') {
+        GraphPanel.onSelectNode({
+          id: String(msg.id ?? ''),
+          label: String(msg.label ?? ''),
+          kind: String(msg.kind ?? ''),
+        });
+      }
+    }, undefined, []);
   }
+
+  /** Callback invoked when the user clicks a node in the graph. */
+  public static onSelectNode: ((node: { id: string; label: string; kind: string }) => void) | undefined;
 
   public static createOrShow(extensionUri: vscode.Uri, graph: GraphData): void {
     if (GraphPanel.current) {

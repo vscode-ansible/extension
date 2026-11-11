@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTaskNames, matchBreakpoint, parseRunArgs } from './pure';
+import { parseTaskNames, parseTaskTree, matchBreakpoint, parseRunArgs } from './pure';
 
 describe('parseTaskNames', () => {
   it('extracts tasks from --list-tasks', () => {
@@ -40,6 +40,43 @@ describe('matchBreakpoint', () => {
       tasks,
     );
     expect(m).toBeNull();
+  });
+});
+
+describe('parseTaskTree', () => {
+  it('splits plays and strips role prefixes', () => {
+    const out = [
+      'play #1 (webservers): Configure webservers\tTAGS: []',
+      '  tasks:',
+      '    webserver : Install nginx\tTAGS: []',
+      '    webserver : Deploy index page\tTAGS: []',
+      'play #2 (dbservers): Configure database\tTAGS: []',
+      '  tasks:',
+      '    db : Install PostgreSQL\tTAGS: []',
+    ].join('\n');
+    const plays = parseTaskTree(out);
+    expect(plays).toHaveLength(2);
+    expect(plays[0]?.hosts).toBe('webservers');
+    expect(plays[0]?.tasks.map((t) => t.name)).toEqual([
+      'Install nginx',
+      'Deploy index page',
+    ]);
+    expect(plays[1]?.tasks[0]?.name).toBe('Install PostgreSQL');
+  });
+
+  it('rebuilds nesting from indentation', () => {
+    const out = [
+      'play #1 (all): Play\tTAGS: []',
+      '  tasks:',
+      '    role : Install packages\tTAGS: []',
+      '      include : Configure\tTAGS: []',
+      '      include : Restart service\tTAGS: []',
+    ].join('\n');
+    const plays = parseTaskTree(out);
+    const root = plays[0]?.tasks[0];
+    expect(root?.name).toBe('Install packages');
+    expect(root?.children.map((c) => c.name)).toEqual(['Configure', 'Restart service']);
+    expect(root?.children[0]?.play).toBe('Play');
   });
 });
 

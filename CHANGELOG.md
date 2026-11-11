@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-11-11
+
+### Added
+
+- Constructor wizard (`Ansible: Constructor`) — a step-by-step builder for
+  playbooks, roles, and tasks with module autocomplete, required/optional
+  options, and theme-adaptive, compact styling.
+- Variables store: read and edit `group_vars/`, `host_vars/`, and role
+  `defaults/` in the Constructor.
+- Secrets manager: encrypt/decrypt/view files with `ansible-vault`.
+- Playbook selection from a dropdown and from project-graph node clicks.
+- i18n (Russian/English) with an `ansibleToolkit.language` setting.
+
+### Changed
+
+- All webviews now use VS Code theme CSS variables instead of hardcoded colors.
+- Activity bar icon is a 24×24 monochrome glyph that follows the theme.
+
+### Fixed
+
+- Running/list-tasks against non-playbook YAML (e.g. `requirements.yml`) now
+  shows a clear warning instead of a raw Ansible error.
+- Module catalog is expanded with required/optional options and tags.
+
 ## [0.1.7] - 2026-11-10
 
 ### Added
@@ -81,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sequential run queue (`run-queue.yml` or multi-select) in a notebook style.
 - File icons for playbooks, roles, and inventories.
 
+[0.1.8]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.8
 [0.1.7]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.7
 [0.1.6]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.6
 [0.1.5]: https://github.com/vscode-ansible/extension/releases/tag/v0.1.5

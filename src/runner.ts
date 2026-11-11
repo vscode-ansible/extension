@@ -85,6 +85,38 @@ export function runPlaybookInTerminal(playbookPath: string, extraArgs: string[] 
   writeToTerminal('ansible-playbook', command, workspaceRoot());
 }
 
+/**
+ * Runs ansible-playbook and captures merged stdout/stderr lines live so the
+ * caller can surface per-task results and errors in a panel. Returns the exit
+ * code and the full output.
+ */
+export function runPlaybookCapturing(
+  playbookPath: string,
+  extraArgs: string[] = [],
+  onLine?: (line: string) => void,
+): Promise<SpawnResult> {
+  const rel = relToWorkspace(playbookPath);
+  const exec = playbookExecutable();
+  const cfg = vscode.workspace.getConfiguration('ansibleToolkit');
+  const inventory = cfg.get<string>('defaultInventory') ?? '';
+  const argv = parseRunArgs(
+    [exec, inventory ? `-i ${inventory}` : '', ...extraArgs, rel].join(' '),
+  );
+  let buffer = '';
+  return runCommand(argv[0] ?? exec, argv.slice(1), workspaceRoot(), (chunk) => {
+    buffer += chunk;
+    let idx: number;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      onLine?.(line);
+    }
+  }).then((res) => {
+    if (buffer.trim()) onLine?.(buffer);
+    return res;
+  });
+}
+
 /** Runs ansible-lint and returns raw output (for diagnostic parsing). */
 export async function runLint(projectRoot: string): Promise<SpawnResult> {
   const exec = lintExecutable();

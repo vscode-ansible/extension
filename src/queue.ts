@@ -81,6 +81,41 @@ export function stringToStep(raw: string, root: string): RunStep | null {
   return { title: trimmed, command: trimmed };
 }
 
+/**
+ * Returns true when a .yml/.yaml file looks like an actual playbook — a list of
+ * plays (a sequence of mappings or a single mapping, each with `hosts`). Files
+ * like requirements.yml, run-queue.yml, group_vars/*, and vars/* are mappings
+ * without `hosts` and are not playbooks.
+ */
+export function isPlaybookFile(filePath: string): boolean {
+  if (!/\.ya?ml$/i.test(filePath)) return false;
+  const base = path.basename(filePath);
+  if (/requirements\.ya?ml/i.test(base) || /run-queue\.ya?ml/i.test(base)) return false;
+  const dirRel = filePath.toLowerCase();
+  if (
+    /[/\\](group_vars|host_vars|vars|defaults|meta|handlers|tasks|templates)[/\\]/.test(
+      dirRel,
+    )
+  ) {
+    return false;
+  }
+
+  let doc: unknown;
+  try {
+    doc = parseYaml(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return false;
+  }
+
+  const items = Array.isArray(doc) ? doc : [doc];
+  return items.some(
+    (it) =>
+      it !== null &&
+      typeof it === 'object' &&
+      (it as Record<string, unknown>).hosts !== undefined,
+  );
+}
+
 /** Lists .yml/.yaml files in the root, except special ones. */
 export function listPlaybookFiles(root: string): string[] {
   try {

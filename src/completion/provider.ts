@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ANSIBLE_KEYWORDS, filterModules, moduleByName } from './modules';
+import { ANSIBLE_KEYWORDS, filterModules, moduleByName, moduleOptions } from './modules';
 
 /**
  * Completion provider for Ansible YAML:
@@ -52,7 +52,7 @@ export class AnsibleCompletionProvider implements vscode.CompletionItemProvider 
     const mod = moduleByName(moduleName);
     if (!mod) return [];
     const pad = ' '.repeat(indent);
-    return mod.options.map((opt) => {
+    return moduleOptions(mod).map((opt) => {
       const item = new vscode.CompletionItem(opt, vscode.CompletionItemKind.Field);
       item.detail = `Option of module ${moduleName}`;
       item.insertText = pad + opt + ': $1';
