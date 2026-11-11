@@ -4,6 +4,10 @@
   "description": "Ansible support for VS Code: syntax highlighting, module autocomplete, playbook runner, linting, project graphs, secret detection, and debugging.",
   "version": "0.1.8",
   "publisher": "vscode-ansible",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vscode-ansible/extension.git"
+  },
   "icon": "icon.png",
   "license": "MIT",
   "engines": {
